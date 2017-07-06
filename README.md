@@ -25,7 +25,7 @@ Make your own provider configuration file starting from the provided template
 cp $BENCHSUITE_CONFIG_FOLDER/providers/amazon.conf.example $BENCHSUITE_CONFIG_FOLDER/providers/my-amazon.conf
 ~~~
 
-Open `my-amazon.conf` and complete the missing data with your personal :cloud: Amazon AWS information :
+Open `my-amazon.conf` and complete the missing data with your personal Amazon AWS information :
 ```ini
 [provider]
 class = benchsuite.provider.libcloud.LibcloudComputeProvider
@@ -49,7 +49,7 @@ vm_user = ubuntu
 platform = ubuntu_16
 ```
 
-Now you can use the provider configuration:
+Now you can use the provider configuration :bowtie::
 ```commandline
 python -m benchsuite.cli exec --provider my-amazon --service ubuntu_micro --tool ycsb-mongodb --workload WorkloadA
 ```
