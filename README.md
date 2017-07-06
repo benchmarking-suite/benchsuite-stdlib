@@ -18,7 +18,7 @@ echo "export BENCHSUITE_CONFIG_FOLDER=`pwd`/benchsuite-configuration" >> ~/.bash
 source ~/.bashrc
 ~~~
 
-## Amazon AWS provider
+### Example: Amazon AWS provider
 
 Make your own provider configuration file starting from the provided template
 ~~~
