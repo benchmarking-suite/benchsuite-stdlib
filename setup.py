@@ -8,10 +8,7 @@ from setuptools.command.install import install
 
 
 class PostInstallConfigFiles(install):
-    """
-    Custom install command that before running the actual install command, download the argparse-manpage package and 
-    invoke it to build the manpage from the argparse parser of the cli.
-    """
+
     def run(self):
 
         # if we use do_egg_install() here,  the bdist_wheel command will fail
@@ -23,33 +20,37 @@ class PostInstallConfigFiles(install):
             dest_dir = os.path.join(user_config_dir('benchmarking-suite'), 'benchmarks')
             log.info('Installing default stdlib benchmarks configuration into {0}'.format(dest_dir))
             os.makedirs(dest_dir, exist_ok=True)
-            files = pkg_resources.resource_listdir(pkg_resources.Requirement.parse("benchsuite.stdlib"), '/'.join(('benchsuite','stdlib', 'data', 'benchmarks')))
+            #files = pkg_resources.resource_listdir(pkg_resources.Requirement.parse("benchsuite.stdlib"), '/'.join(('benchsuite','stdlib', 'data', 'benchmarks')))
+            files = os.listdir('data/benchmarks')
             for f in [file for file in files if file.endswith('.conf')]:
-                content = pkg_resources.resource_string(pkg_resources.Requirement.parse("benchsuite.stdlib"),
-                                                       '/'.join(('benchsuite','stdlib', 'data', 'benchmarks', f)))
+                # content = pkg_resources.resource_string(pkg_resources.Requirement.parse("benchsuite.stdlib"),'/'.join(('benchsuite','stdlib', 'data', 'benchmarks', f)))
+                with open('data/benchmarks/'+f, 'r') as myfile:
+                    content = myfile.read()
                 dest_file = os.path.join(dest_dir, f)
                 log.info('Installing {0} in {1}'.format(f, dest_file))
                 if os.path.isfile(dest_file):
                     log.debug('File {0} already exists. Renaming it to {1}'.format(dest_file, dest_file+'.bkp'))
                     os.rename(dest_file, dest_file + '.bkp')
                 with open(dest_file, "w") as text_file:
-                    text_file.write(content.decode("utf-8"))
+                    text_file.write(content)
 
             # install providers
             dest_dir = os.path.join(user_config_dir('benchmarking-suite'), 'providers')
             log.info('Installing default stdlib providers configuration into {0}'.format(dest_dir))
             os.makedirs(dest_dir, exist_ok=True)
-            files = pkg_resources.resource_listdir(pkg_resources.Requirement.parse("benchsuite.stdlib"), '/'.join(('benchsuite','stdlib', 'data', 'providers')))
+            #files = pkg_resources.resource_listdir(pkg_resources.Requirement.parse("benchsuite.stdlib"), '/'.join(('benchsuite','stdlib', 'data', 'providers')))
+            files = os.listdir('data/providers')
             for f in [file for file in files if file.endswith('.conf.example')]:
-                content = pkg_resources.resource_string(pkg_resources.Requirement.parse("benchsuite.stdlib"),
-                                                       '/'.join(('benchsuite','stdlib', 'data', 'providers', f)))
+                #content = pkg_resources.resource_string(pkg_resources.Requirement.parse("benchsuite.stdlib"),'/'.join(('benchsuite','stdlib', 'data', 'providers', f)))
+                with open('data/providers/' + f, 'r') as myfile:
+                    content = myfile.read()
                 dest_file = os.path.join(dest_dir, f)
                 log.info('Installing {0} in {1}'.format(f, dest_file))
                 if os.path.isfile(dest_file):
                     log.debug('File {0} already exists. Renaming it to {1}'.format(dest_file, dest_file+'.bkp'))
                     os.rename(dest_file, dest_file + '.bkp')
                 with open(dest_file, "w") as text_file:
-                    text_file.write(content.decode("utf-8"))
+                    text_file.write(content)
 
         except pkg_resources.DistributionNotFound as ex:
             # this might be normal when invoked with bdist_wheel because the package is not installed yet..??
@@ -58,21 +59,14 @@ class PostInstallConfigFiles(install):
 
 
 
-# invoke post-script also in case of bdist_wheel command because "pip install" actually uses this command
-if 'install' in sys.argv:
+if 'install' in sys.argv or  'bdist_wheel' in sys.argv:
     cmdclass = {'install': PostInstallConfigFiles}
 else:
     cmdclass={}
 
-if 'bdist_wheel' in sys.argv:
-    log.error('WARNING! Wheels not supported (yet). The mehtod we have to install the data files in the user dir only works with setup.py install')
-    sys.exit(1)
-
-print("############################## " + str(sys.argv))
-
 setup(
     name='benchsuite.stdlib',
-    version='2.0.0-dev26',
+    version='2.0.0-dev30',
     packages=find_packages('src'),
     namespace_packages=['benchsuite'],
     package_dir={'': 'src'},
@@ -85,7 +79,7 @@ setup(
     #data_files = [('share/benchmarking-suite', ['data/benchmarks/cfd.conf'])],
     # include_package_data=True,
     cmdclass=cmdclass,
-    include_package_data=True,
+    #include_package_data=True,
     setup_requires=['appdirs']
 
 )
