@@ -29,38 +29,38 @@ from benchsuite.core.model.exception import BenchmarkConfigurationException
 
 logger = logging.getLogger(__name__)
 
-
-DEFAULT_INSTALL_REDHAT = '''
-sudo wget http://etics.res.eng.it/repository/pm/registered/repomd/global/artist/centos6.5_x86_64_gcc447/etics-registered-artist.repo -O /etc/yum.repos.d/artist.repo;
-sudo yum -y install %(required_packages)s
-'''
-
-DEFAULT_POSTINSTALL_REDHAT = '''
-echo Nothing to execute
-'''
-
-DEFAULT_INSTALL_DEBIAN = '''
-sudo wget http://etics.res.eng.it/repository/pm/registered/apt/global/artist/deb7.4_x86_64_gcc472-5/etics-registered-artist.list -O /etc/apt/sources.list.d/Artist.list
-sudo apt-get update;
-sudo apt-get -y --force-yes install %(required_packages)s
-'''
-
-DEFAULT_POSTINSTALL_DEBIAN = '''
-echo Nothing to execute
-'''
-
-DEFAULT_POSTINSTALL_CENTOS = '''
-echo Nothing to execute
-'''
-
-
-DEFAULT_INSTALL_UBUNTU = '''
-echo "Nothing to execute"
-'''
-
-DEFAULT_POSTINSTALL_UBUNTU = '''
-echo "Nothing to execute"
-'''
+#
+# DEFAULT_INSTALL_REDHAT = '''
+# sudo wget http://etics.res.eng.it/repository/pm/registered/repomd/global/artist/centos6.5_x86_64_gcc447/etics-registered-artist.repo -O /etc/yum.repos.d/artist.repo;
+# sudo yum -y install %(required_packages)s
+# '''
+#
+# DEFAULT_POSTINSTALL_REDHAT = '''
+# echo Nothing to execute
+# '''
+#
+# DEFAULT_INSTALL_DEBIAN = '''
+# sudo wget http://etics.res.eng.it/repository/pm/registered/apt/global/artist/deb7.4_x86_64_gcc472-5/etics-registered-artist.list -O /etc/apt/sources.list.d/Artist.list
+# sudo apt-get update;
+# sudo apt-get -y --force-yes install %(required_packages)s
+# '''
+#
+# DEFAULT_POSTINSTALL_DEBIAN = '''
+# echo Nothing to execute
+# '''
+#
+# DEFAULT_POSTINSTALL_CENTOS = '''
+# echo Nothing to execute
+# '''
+#
+#
+# DEFAULT_INSTALL_UBUNTU = '''
+# echo "Nothing to execute"
+# '''
+#
+# DEFAULT_POSTINSTALL_UBUNTU = '''
+# echo "Nothing to execute"
+# '''
 
 class BenchmarkTest(object):
 
@@ -87,10 +87,21 @@ class BenchmarkTest(object):
         return self.__get_script('remove', platform, interpolation_dict)
 
     def __get_script(self, type, platform, interpolation_dict):
+
+        # try with the exact platform name (e.g. install_ubuntu_16.04)
         if getattr(self, type + '_' + platform, None):
             return textwrap.dedent(self.__replace_cp_properties(
                 getattr(self, type + '_' + platform), interpolation_dict)).strip()
 
+        # try with the first token of the platform (e.g. install_ubuntu) assuming
+        # the platform name is in the form <platformName>_<release>
+        t = platform.split('_')
+        if len(t) > 1:
+            if getattr(self, type + '_' + t[0], None):
+                return textwrap.dedent(self.__replace_cp_properties(
+                    getattr(self, type + '_' + t[0], None), interpolation_dict)).strip()
+
+        # try without the platform (e.g. install)
         if getattr(self, type, None):
             return textwrap.dedent(self.__replace_cp_properties(
                 getattr(self, type, None), interpolation_dict)).strip()
