@@ -25,13 +25,13 @@ from benchsuite.core.model.execution import ExecutionEnvironment, ExecutionEnvir
 
 class VM:
 
-    def __init__(self, id, ip, username, keyfile, platform, working_dir):
+    def __init__(self, id, ip, username, keyfile, platform, working_dir=None):
         self.ip = ip
         self.id = id
         self.username = username
         self.keyfile = keyfile
         self.platform = platform
-        self.working_dir = working_dir
+        self.working_dir = working_dir or '/home/' + self.username
 
     def __str__(self) -> str:
         return "VM[ip: {0}]".format(self.ip)

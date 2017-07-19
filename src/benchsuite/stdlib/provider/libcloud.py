@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 class LibcloudComputeProvider(ServiceProvider):
 
     def __init__(self, type, access_id, secret_key):
-        super().__init__('libcloud')
+        super().__init__('libcloud-' + type)
         self.libcloud_type = type
         self.access_id = access_id
         self.secret_key = secret_key
@@ -112,7 +112,7 @@ class LibcloudComputeProvider(ServiceProvider):
                 node = [i for i in driver.list_nodes() if i.uuid == node.uuid][0]
 
 
-        vm = VM(node.id, node.public_ips[0], self.vm_user, self.key_path, self.platform, self.working_dir)
+        vm = VM(node.id, node.public_ips[0], self.vm_user, self.key_path, self.platform, working_dir=self.working_dir)
 
         self.__execute_post_create(vm, 5)
 
