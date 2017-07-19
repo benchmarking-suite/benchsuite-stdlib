@@ -34,6 +34,7 @@ class ExistingVMProvider(ServiceProvider):
         self.user = None
         self.key_path = None
         self.platform = None
+        self.password = None
         self.vm = None
 
     def destroy_service(self):
@@ -42,7 +43,7 @@ class ExistingVMProvider(ServiceProvider):
     def get_execution_environment(self, request: ExecutionEnvironmentRequest) -> ExecutionEnvironment:
 
         if not self.vm:
-            self.vm = VM('existing_vm_'+self.ip_address, self.ip_address, self.user, self.key_path, self.platform)
+            self.vm = VM('existing_vm_'+self.ip_address, self.ip_address, self.user, self.platform, keyfile=self.key_path, password=self.password)
 
         return VMSetExecutionEnvironment([self.vm])
 
@@ -54,8 +55,14 @@ class ExistingVMProvider(ServiceProvider):
 
         cp.ip_address = vm_config['ip_address']
         cp.user = vm_config['user']
-        cp.key_path = vm_config['key_path']
         cp.platform = vm_config['platform']
+
+
+        if 'key_path' in vm_config:
+            cp.key_path = vm_config['key_path']
+
+        if 'password' in vm_config:
+            cp.password = vm_config['password']
 
         return cp
 

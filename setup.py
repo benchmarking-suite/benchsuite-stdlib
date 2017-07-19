@@ -66,7 +66,7 @@ else:
 
 setup(
     name='benchsuite.stdlib',
-    version='2.0.0-dev30',
+    version='2.0.0-beta2',
     packages=find_packages('src'),
     namespace_packages=['benchsuite'],
     package_dir={'': 'src'},

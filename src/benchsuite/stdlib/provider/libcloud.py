@@ -111,8 +111,7 @@ class LibcloudComputeProvider(ServiceProvider):
                 time.sleep(5)
                 node = [i for i in driver.list_nodes() if i.uuid == node.uuid][0]
 
-
-        vm = VM(node.id, node.public_ips[0], self.vm_user, self.key_path, self.platform, working_dir=self.working_dir)
+        vm = VM(node.id, node.public_ips[0], self.vm_user, self.platform, working_dir=self.working_dir, keyfile=self.key_path)
 
         self.__execute_post_create(vm, 5)
 

@@ -67,7 +67,11 @@ def run_ssh_cmd(vm, cmd, needs_pty=False):
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(hostname=vm.ip, port=22, username=vm.username, key_filename=vm.keyfile)
+
+        if vm.keyfile:
+            ssh.connect(hostname=vm.ip, port=22, username=vm.username, key_filename=vm.keyfile)
+        else:
+            ssh.connect(hostname=vm.ip, port=22, username=vm.username, password=vm.password)
 
         stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=needs_pty)
         exit_status = stdout.channel.recv_exit_status()
