@@ -49,12 +49,15 @@ def run_ssh_script(vm, cmd, phase, id, async=False, needs_pty=False):
     if async:
         invocation_cmd = '' + invocation_cmd + ' &'
 
+    # removes empty lines
+    cmd = os.linesep.join([s for s in cmd.splitlines() if s])
 
     decorated_cmd = '''cat << EOF > {0}
 touch {1}
 mkdir -p {2}
 cd {2}
 cat << END2 > {3}
+set -e
 {4}
 END2
 SECONDS=0
