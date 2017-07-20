@@ -85,8 +85,9 @@ else:
 
 
 # import the VERSION from the source code
-sys.path.append('src/')
-from benchsuite.stdlib import VERSION
+import sys
+sys.path.append(os.getcwd() + '/src/benchsuite')
+from stdlib import VERSION
 
 setup(
     name='benchsuite.stdlib',
