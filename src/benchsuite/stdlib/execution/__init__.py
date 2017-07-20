@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# BenchmarkingSuite - Benchmarking Controller
+# Benchmarking Suite
 # Copyright 2014-2017 Engineering Ingegneria Informatica S.p.A.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# BenchmarkingSuite - Benchmarking Controller
+# Benchmarking Suite
 # Copyright 2014-2017 Engineering Ingegneria Informatica S.p.A.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,3 +16,5 @@
 #
 # Developed in the ARTIST EU project (www.artist-project.eu) and in the
 # CloudPerfect EU project (https://cloudperfect.eu/)
+
+VERSION = (2, 0, 0, 'beta3')
