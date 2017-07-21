@@ -19,7 +19,7 @@
 
 
 [provider]
-class = benchsuite.provider.existing_vm.ExistingVMProvider
+class = benchsuite.stdlib.provider.existing_vm.ExistingVMProvider
 
 [my_vm1]
 ip_address = xxx.xxx.xxx.xxx

@@ -19,7 +19,7 @@
 
 
 [provider]
-class = benchsuite.provider.libcloud.LibcloudComputeProvider
+class = benchsuite.stdlib.provider.libcloud.LibcloudComputeProvider
 
 type = ec2
 
