@@ -121,7 +121,7 @@ setup(
     namespace_packages=['benchsuite'],
     package_dir={'': 'src'},
 
-    install_requires = ['paramiko', 'apache-libcloud'],
+    install_requires = ['paramiko', 'apache-libcloud', 'benchsuite.core'],
     setup_requires = ['appdirs'],
 
     cmdclass = cmdclass
