@@ -26,9 +26,8 @@ class ExistingVMProvider(ServiceProvider):
     This provider is used to execute benchmarks against an already existing VM.
     """
 
-    def __init__(self):
-        super().__init__('existing_vm')
-
+    def __init__(self, name, service_type):
+        super().__init__(name, service_type)
         self.ip_address = None
         self.user = None
         self.key_path = None
@@ -48,7 +47,7 @@ class ExistingVMProvider(ServiceProvider):
 
     @staticmethod
     def load_from_config_file(config, service_type):
-        cp = ExistingVMProvider()
+        cp = ExistingVMProvider(config['provider']['name'], service_type)
 
         vm_config = config[service_type]
 

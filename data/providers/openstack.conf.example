@@ -21,13 +21,14 @@
 [provider]
 class = benchsuite.stdlib.provider.libcloud.LibcloudComputeProvider
 
-type = openstack
+name = my-openstack
+
+driver = openstack
 
 endpoint=http://130.206.84.8:4730
 access_id = gabriele.giammatteo@eng.it
 secret_key = xxxxxxx
 
-[libcloud_extra_params]
 ex_force_auth_version: 2.0_password
 ex_tenant_name: ggiammat cloud
 ex_force_service_region: Vicenza
@@ -62,4 +63,3 @@ vm_user = ubuntu
 platform = ubuntu
 post_create_script =
     sudo hostname localhost
-

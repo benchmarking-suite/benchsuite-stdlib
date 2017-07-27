@@ -21,12 +21,13 @@
 [provider]
 class = benchsuite.stdlib.provider.libcloud.LibcloudComputeProvider
 
-type = ec2
+name = amazon-ec2
+
+driver = ec2
 
 access_id = <your access_id>
 secret_key = <your secret_key>
 
-[libcloud_extra_params]
 region = us-west-1
 ex_security_group_ids = <id of the security group>
 ex_subnet = <id of the subnet>

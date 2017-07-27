@@ -34,9 +34,9 @@ logger = logging.getLogger(__name__)
 
 class LibcloudComputeProvider(ServiceProvider):
 
-    def __init__(self, type, access_id, secret_key):
-        super().__init__('libcloud-' + type)
-        self.libcloud_type = type
+    def __init__(self, name, service_type, driver, access_id, secret_key):
+        super().__init__(name, service_type)
+        self.libcloud_type = driver
         self.access_id = access_id
         self.secret_key = secret_key
         self.extra_params = None
@@ -154,17 +154,26 @@ class LibcloudComputeProvider(ServiceProvider):
     def load_from_config_file(config: ConfigParser, service_type: str) -> ServiceProvider:
 
         cp = LibcloudComputeProvider(
-            config['provider']['type'],
+            config['provider']['name'],
+            service_type,
+            config['provider']['driver'],
             config['provider']['access_id'],
             config['provider']['secret_key']
         )
 
+        libcloud_additional_params = {}
+
+        # consider all remaining properties in the [provider] section as libcloud extra params
+        for k, v in config['provider'].items():
+            if k not in ['name', 'driver', 'access_id', 'secret_key']:
+                libcloud_additional_params[k] = v
+
+        # continue to support old format (with libcloud extra parameter in their own section)
         if 'libcloud_extra_params' in config:
-            libcloud_additional_params = {}
             for k in config['libcloud_extra_params']:
                 libcloud_additional_params[k] = config['libcloud_extra_params'][k]
 
-            cp.extra_params = libcloud_additional_params
+        cp.extra_params = libcloud_additional_params
 
         cloud_service_config = config[service_type]
 
