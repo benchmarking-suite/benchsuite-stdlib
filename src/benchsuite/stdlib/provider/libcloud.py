@@ -24,6 +24,7 @@ from configparser import ConfigParser
 from libcloud.compute.drivers.ec2 import EC2NetworkSubnet
 from libcloud.compute.providers import get_driver
 
+from benchsuite.core.model.exception import ProviderConfigurationException
 from benchsuite.stdlib.util.ssh import run_ssh_cmd
 from benchsuite.core.model.execution import ExecutionEnvironmentRequest, ExecutionEnvironment
 from benchsuite.core.model.provider import ServiceProvider
@@ -103,7 +104,12 @@ class LibcloudComputeProvider(ServiceProvider):
 
         #5. try to assign a free public ip (currently work for Openstack only
         if not node.public_ips:
-            self.__assign_public_ip(driver, node)
+            try:
+                self.__assign_public_ip(driver, node)
+            except ProviderConfigurationException as e:
+                logger.error('Got an exception (%s). Rolling back', str(e))
+                node.destroy()
+                raise e
 
             # the new public ip could take some time to appear
             while not node.public_ips:
@@ -113,7 +119,7 @@ class LibcloudComputeProvider(ServiceProvider):
         vm = VM(node.id, node.public_ips[0], self.vm_user, self.platform, working_dir=self.working_dir, keyfile=self.key_path)
 
         self.__execute_post_create(vm, 5)
-
+        logger.info('New VM %s created and initialized', vm)
         return vm
 
     def __assign_public_ip(self, driver, node):
@@ -122,8 +128,7 @@ class LibcloudComputeProvider(ServiceProvider):
             logger.debug('Trying to assign the public ip %s to the new instance', p_ip)
             driver.ex_attach_floating_ip_to_node(node, p_ip)
         else:
-            logger.warning('No floating public ips available!')
-
+            raise ProviderConfigurationException('No floating public IPs available! Cannot continue')
 
     def __get_available_public_ip(self, driver):
         public_ips = driver.ex_list_floating_ips()
