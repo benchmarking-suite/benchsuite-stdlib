@@ -51,20 +51,21 @@ def run_ssh_script(vm, cmd, phase, id, async=False, needs_pty=False):
     # removes empty lines
     cmd = os.linesep.join([s for s in cmd.splitlines() if s])
 
-    decorated_cmd = '''cat << EOF > {0}
+
+    decorated_cmd = '''cat << 'EOF' > {0}
 touch {1}
 mkdir -p {2}
 cd {2}
-cat << END2 > {3}
+cat << 'END2' > {3}
 set -e
 {4}
 END2
 SECONDS=0
 bash -e  {3} 1> {5} 2> {6}
-echo \$? > {7}
-echo \$SECONDS > {8}
+echo $? > {7}
+echo $SECONDS > {8}
 rm {1}
-exit \`cat {7}\`
+exit `cat {7}`
 EOF
 bash {0}'''.format(script_wrapper, lock, working_dir, script, cmd, out, err, ret, runtime)
 
