@@ -23,6 +23,7 @@ from configparser import ConfigParser
 
 from libcloud.compute.drivers.ec2 import EC2NetworkSubnet
 from libcloud.compute.providers import get_driver
+from os import read
 
 from benchsuite.core.model.exception import ProviderConfigurationException
 from benchsuite.stdlib.util.ssh import run_ssh_cmd
@@ -44,7 +45,7 @@ class LibcloudComputeProvider(ServiceProvider):
         self.image = None
         self.size = None
         self.key_name = None
-        self.key_path = None
+        self.ssh_private_key = None
         self.vm_user = None
         self.platform = None
         self.working_dir = None
@@ -116,7 +117,7 @@ class LibcloudComputeProvider(ServiceProvider):
                 time.sleep(5)
                 node = [i for i in driver.list_nodes() if i.uuid == node.uuid][0]
 
-        vm = VM(node.id, node.public_ips[0], self.vm_user, self.platform, working_dir=self.working_dir, keyfile=self.key_path)
+        vm = VM(node.id, node.public_ips[0], self.vm_user, self.platform, working_dir=self.working_dir, priv_key=self.ssh_private_key)
 
         self.__execute_post_create(vm, 5)
         logger.info('New VM %s created and initialized', vm)
@@ -185,10 +186,14 @@ class LibcloudComputeProvider(ServiceProvider):
         cp.image = cloud_service_config['image']
         cp.size = cloud_service_config['size']
         cp.key_name = cloud_service_config['key_name']
-        cp.key_path = cloud_service_config['key_path']
         cp.vm_user = cloud_service_config['vm_user']
         cp.working_dir = '/home/' + cloud_service_config['vm_user'] # default value
         cp.platform = cloud_service_config['platform']
+
+        if 'ssh_private_key' in cloud_service_config:
+            cp.ssh_private_key = cloud_service_config['ssh_private_key']
+        else:
+            cp.ssh_private_key = open(cloud_service_config['key_path']).read()
 
 
         if 'working_dir' in cloud_service_config:

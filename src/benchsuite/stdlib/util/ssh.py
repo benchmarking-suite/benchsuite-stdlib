@@ -16,6 +16,7 @@
 #
 # Developed in the ARTIST EU project (www.artist-project.eu) and in the
 # CloudPerfect EU project (https://cloudperfect.eu/)
+from io import StringIO
 
 import paramiko
 
@@ -33,6 +34,7 @@ import paramiko
 #
 # def get_environments_storage():
 #     return get_data_dir() + os.path.sep + 'environments.dat'
+from paramiko import RSAKey
 
 
 def ssh_transfer_output(vm, name, dest):
@@ -66,8 +68,9 @@ def run_ssh_cmd(vm, cmd, needs_pty=False):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        if vm.keyfile:
-            ssh.connect(hostname=vm.ip, port=22, username=vm.username, key_filename=vm.keyfile)
+        if vm.priv_key:
+            pkey = RSAKey.from_private_key(StringIO(vm.priv_key))  # assuming it is an RSAKey
+            ssh.connect(hostname=vm.ip, port=22, username=vm.username, pkey=pkey)
         else:
             ssh.connect(hostname=vm.ip, port=22, username=vm.username, password=vm.password)
 
@@ -86,3 +89,6 @@ def run_ssh_cmd(vm, cmd, needs_pty=False):
 
     finally:
         ssh.close()
+
+
+

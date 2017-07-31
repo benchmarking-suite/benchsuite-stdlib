@@ -30,7 +30,7 @@ class ExistingVMProvider(ServiceProvider):
         super().__init__(name, service_type)
         self.ip_address = None
         self.user = None
-        self.key_path = None
+        self.ssh_private_key = None
         self.platform = None
         self.password = None
         self.vm = None
@@ -41,7 +41,7 @@ class ExistingVMProvider(ServiceProvider):
     def get_execution_environment(self, request: ExecutionEnvironmentRequest) -> ExecutionEnvironment:
 
         if not self.vm:
-            self.vm = VM('existing_vm_'+self.ip_address, self.ip_address, self.user, self.platform, keyfile=self.key_path, password=self.password)
+            self.vm = VM('existing_vm_'+self.ip_address, self.ip_address, self.user, self.platform, priv_key=self.ssh_private_key, password=self.password)
 
         return VMSetExecutionEnvironment([self.vm])
 
@@ -55,11 +55,11 @@ class ExistingVMProvider(ServiceProvider):
         cp.user = vm_config['user']
         cp.platform = vm_config['platform']
 
-
-        if 'key_path' in vm_config:
-            cp.key_path = vm_config['key_path']
-
-        if 'password' in vm_config:
+        if 'ssh_private_key' in vm_config:
+            cp.ssh_private_key = vm_config['ssh_private_key']
+        elif 'key_path' in vm_config:
+            cp.ssh_private_key = open(vm_config['key_path']).read()
+        elif 'password' in vm_config:
             cp.password = vm_config['password']
 
         return cp
