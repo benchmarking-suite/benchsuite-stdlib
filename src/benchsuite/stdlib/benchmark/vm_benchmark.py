@@ -21,6 +21,8 @@ import logging
 import re
 import textwrap
 
+import sys
+
 from benchsuite.stdlib.execution.vm_environment import VMSetExecutionEnvironmentRequest
 from benchsuite.stdlib.execution.sshworker import PureRemoteBashExecutor
 
@@ -70,9 +72,6 @@ class BenchmarkTest(object):
     benchmark_name = None
     workload_name = None
 
-
-    def parse_results(self, results, cp):
-        return self.parser.parse_results(results, cp, self)
 
     def get_install_script(self, platform, interpolation_dict = {}):
         return self.__get_script('install', platform, interpolation_dict)
@@ -165,9 +164,10 @@ class BenchmarkFactory:
 
 class BashCommandBenchmark(Benchmark):
 
-    def __init__(self, name, scripts, workload):
+    def __init__(self, name, scripts, workload, parser):
         super().__init__(name, workload)
         self.scripts = scripts
+        self.parser = parser
 
     def get_env_request(self):
         return VMSetExecutionEnvironmentRequest(1)
@@ -193,4 +193,14 @@ class BashCommandBenchmark(Benchmark):
         # TODO refactor this
         bt = BenchmarkFactory.get_benchmark_test(config, workload)
 
-        return BashCommandBenchmark(config['DEFAULT']['name'], bt, workload)
+        if 'parser' in config['DEFAULT']:
+            parser_class = config['DEFAULT']['parser']
+            module_name, class_name = parser_class.rsplit('.', 1)
+
+            __import__(module_name)
+            module = sys.modules[module_name]
+            parser = getattr(module, class_name)()
+        else:
+            parser = None
+
+        return BashCommandBenchmark(config['DEFAULT']['name'], bt, workload, parser)
