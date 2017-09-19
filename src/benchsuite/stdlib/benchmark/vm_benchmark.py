@@ -75,6 +75,10 @@ logger = logging.getLogger(__name__)
 
 class BashCommandBenchmark(Benchmark):
 
+    def __init__(self, tool_id, workload_id, tool_name, workload_name, workload_description):
+        super().__init__(tool_id, workload_id, tool_name, workload_name, workload_description)
+        self._props = {}
+
     def get_env_request(self):
         return VMSetExecutionEnvironmentRequest(1)
 
@@ -86,11 +90,9 @@ class BashCommandBenchmark(Benchmark):
         executor = PureRemoteBashExecutor(execution)
         executor.run(async=async)
 
-
     def get_result(self, execution):
         executor = PureRemoteBashExecutor(execution)
         return executor.collect_results()
-
 
     def get_install_script(self, platform, interpolation_dict = {}):
         return self.__get_script('install', platform, interpolation_dict)
@@ -107,22 +109,22 @@ class BashCommandBenchmark(Benchmark):
     def __get_script(self, type, platform, interpolation_dict):
 
         # try with the exact platform name (e.g. install_ubuntu_16.04)
-        if getattr(self, type + '_' + platform, None):
+        if type + '_' + platform in self._props:
             return textwrap.dedent(self.__replace_cp_properties(
-                getattr(self, type + '_' + platform), interpolation_dict)).strip()
+                self._props[type + '_' + platform], interpolation_dict)).strip()
 
         # try with the first token of the platform (e.g. install_ubuntu) assuming
         # the platform name is in the form <platformName>_<release>
         t = platform.split('_')
         if len(t) > 1:
-            if getattr(self, type + '_' + t[0], None):
+            if type + '_' + t[0] in self._props:
                 return textwrap.dedent(self.__replace_cp_properties(
-                    getattr(self, type + '_' + t[0], None), interpolation_dict)).strip()
+                    self._props[type + '_' + t[0]], interpolation_dict)).strip()
 
         # try without the platform (e.g. install)
-        if getattr(self, type, None):
+        if type in self._props:
             return textwrap.dedent(self.__replace_cp_properties(
-                getattr(self, type, None), interpolation_dict)).strip()
+                self._props[type], interpolation_dict)).strip()
 
         return None
         # default = getattr(sys.modules[__name__],
@@ -141,7 +143,7 @@ class BashCommandBenchmark(Benchmark):
 
 
     @staticmethod
-    def load_from_config_file(config, workload):
+    def load_from_config_file(config, tool, workload):
 
         if 'parser' in config['DEFAULT']:
             parser_class = config['DEFAULT']['parser']
@@ -154,16 +156,14 @@ class BashCommandBenchmark(Benchmark):
             parser = None
 
         instance = BashCommandBenchmark(
+            tool, workload,
             config[workload]['tool_name'] if 'tool_name' in config[workload] else None,
             config[workload]['workload_name'] if 'workload_name' in config[workload] else None,
             config[workload]['workload_description'] if 'workload_description' in config[workload] else None
         )
 
-        for k, v in config.items('DEFAULT'):
-            setattr(instance, k, v)
-
         for k, v in config.items(workload):
-            setattr(instance, k, v)
+            instance._props[k] = v
 
         instance.parser = parser
 

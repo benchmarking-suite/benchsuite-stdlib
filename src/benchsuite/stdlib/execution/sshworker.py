@@ -113,7 +113,6 @@ class PureRemoteBashExecutor(TestExecutor):
         self.id = execution.id
         self.test = execution.test
         self.env = execution.exec_env
-        self.test_scripts = execution.test.scripts
 
     def _get_filename(self, phase, type):
 
@@ -143,13 +142,13 @@ class PureRemoteBashExecutor(TestExecutor):
 
     def install(self):
         vm0 = self.env.vms[0]
-        cmd = self.test_scripts.get_install_script(vm0.platform)
+        cmd = self.test.get_install_script(vm0.platform)
         if cmd:
             run_ssh_script(vm0, cmd, 'install', self.id)
         else:
             logger.warning('No install commands to execute')
 
-        cmd = self.test_scripts.get_postinstall_script(vm0.platform)
+        cmd = self.test.get_postinstall_script(vm0.platform)
         if cmd:
             run_ssh_script(vm0, cmd, 'post-install', self.id)
         else:
@@ -158,7 +157,7 @@ class PureRemoteBashExecutor(TestExecutor):
 
     def run(self, async=False):
         vm0 = self.env.vms[0]
-        cmd = self.test_scripts.get_execute_script(vm0.platform)
+        cmd = self.test.get_execute_script(vm0.platform)
         if cmd:
             run_ssh_script(vm0, cmd, 'run', self.id, async=async)
 
