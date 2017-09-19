@@ -25,9 +25,7 @@ import sys
 
 from benchsuite.stdlib.execution.vm_environment import VMSetExecutionEnvironmentRequest
 from benchsuite.stdlib.execution.sshworker import PureRemoteBashExecutor
-
 from benchsuite.core.model.benchmark import Benchmark
-from benchsuite.core.model.exception import BenchmarkConfigurationException
 
 logger = logging.getLogger(__name__)
 
@@ -64,13 +62,34 @@ logger = logging.getLogger(__name__)
 # echo "Nothing to execute"
 # '''
 
-class BenchmarkTest(object):
+#
+#
+# class BenchmarkFactory:
+#
+#     def __init__(self, config_folder):
+#         self.config_folder = config_folder
+#
+#     def get_all_benchmark_tests(self, benchmark_name=None):
+#         pass
+#
 
-    execution_id = None
-    '''assigned by the controller at submission time'''
+class BashCommandBenchmark(Benchmark):
 
-    benchmark_name = None
-    workload_name = None
+    def get_env_request(self):
+        return VMSetExecutionEnvironmentRequest(1)
+
+    def prepare(self, execution):
+        executor = PureRemoteBashExecutor(execution)
+        executor.install()
+
+    def execute(self, execution, async=False):
+        executor = PureRemoteBashExecutor(execution)
+        executor.run(async=async)
+
+
+    def get_result(self, execution):
+        executor = PureRemoteBashExecutor(execution)
+        return executor.collect_results()
 
 
     def get_install_script(self, platform, interpolation_dict = {}):
@@ -120,78 +139,9 @@ class BenchmarkTest(object):
 
         return string
 
-class BenchmarkFactory:
-
-    def __init__(self, config_folder):
-        self.config_folder = config_folder
-
-    def get_all_benchmark_tests(self, benchmark_name=None):
-        pass
-
-    @staticmethod
-    def get_benchmark_test(config, workload_name=None):
-        ''' Insert the information related to the benchmark tool and workload to use; For example "filebench" and "Workload1"'''
-        try:
-
-            if not config.has_section(workload_name):
-                raise Exception('benchmark configuration does not '
-                                'contain a section for workload {0}'.format(
-                    workload_name))
-
-            instance = BenchmarkTest()
-            for k, v in config.items('DEFAULT'):
-                setattr(instance, k, v)
-
-            for k, v in config.items(workload_name):
-                setattr(instance, k, v)
-
-
-            #set the parser
-
-            # parser_class = config.get('DEFAULT', 'parser_class')
-            # module_name, class_name = parser_class.rsplit('.', 1)
-            #
-            # __import__(module_name)
-            # module = sys.modules[module_name]
-            # clazz = getattr(module, class_name)
-            # instance.parser = clazz()
-
-            return instance
-
-        except Exception as ex:
-            raise BenchmarkConfigurationException("Error loading benchmark test: {0}".format(ex))
-
-
-class BashCommandBenchmark(Benchmark):
-
-    def __init__(self, name, scripts, workload, parser):
-        super().__init__(name, workload)
-        self.scripts = scripts
-        self.parser = parser
-
-    def get_env_request(self):
-        return VMSetExecutionEnvironmentRequest(1)
-
-    def prepare(self, execution):
-        executor = PureRemoteBashExecutor(execution)
-        executor.install()
-
-    def execute(self, execution, async=False):
-        executor = PureRemoteBashExecutor(execution)
-        executor.run(async=async)
-
-
-    def get_result(self, execution):
-        executor = PureRemoteBashExecutor(execution)
-        return executor.collect_results()
-
 
     @staticmethod
     def load_from_config_file(config, workload):
-
-        # use the Benchmarking Suite v1 code to load the benchmark scripts
-        # TODO refactor this
-        bt = BenchmarkFactory.get_benchmark_test(config, workload)
 
         if 'parser' in config['DEFAULT']:
             parser_class = config['DEFAULT']['parser']
@@ -203,4 +153,20 @@ class BashCommandBenchmark(Benchmark):
         else:
             parser = None
 
-        return BashCommandBenchmark(config['DEFAULT']['name'], bt, workload, parser)
+        instance = BashCommandBenchmark(
+            config[workload]['tool_name'] if 'tool_name' in config[workload] else None,
+            config[workload]['workload_name'] if 'workload_name' in config[workload] else None,
+            config[workload]['workload_description'] if 'workload_description' in config[workload] else None
+        )
+
+        for k, v in config.items('DEFAULT'):
+            setattr(instance, k, v)
+
+        for k, v in config.items(workload):
+            setattr(instance, k, v)
+
+        instance.parser = parser
+
+        return instance
+
+
