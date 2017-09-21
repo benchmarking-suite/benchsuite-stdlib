@@ -181,6 +181,10 @@ class LibcloudComputeProvider(ServiceProvider):
 
         cp.extra_params = libcloud_additional_params
 
+        if service_type not in config:
+            raise ProviderConfigurationException(
+                'Service Type "{0}" does not exist in the configuration'.format(service_type))
+
         cloud_service_config = config[service_type]
 
         cp.image = cloud_service_config['image']
