@@ -32,6 +32,14 @@ class VM:
         self.platform = platform
         self.password = password
         self.working_dir = working_dir or '/home/' + self.username
+        self.cpu = 0
+        self.memory = 0
+        self.disk = 0
+
+    def set_sizes(self, cpu, memory, disk):
+        self.cpu = cpu
+        self.memory = memory
+        self.disk = disk
 
     def __str__(self) -> str:
         return "VM[ip: {0}]".format(self.ip)
@@ -43,8 +51,27 @@ class VMSetExecutionEnvironment(ExecutionEnvironment):
         super().__init__()
         self.vms = vms
 
-    def __str__(self) -> str:
+    def get_specs_dict(self):
+        res = {}
+        res['type'] = 'VMSet'
+        res['vms'] = []
+        for v in self.vms:
+            d = {}
 
+            if v.cpu:
+                d['cpu'] = v.cpu
+            if v.memory:
+                d['memory'] = v.memory
+            if v.disk:
+                d['disk'] = v.disk
+            if v.platform:
+                d['platform']= v.platform
+
+            res['vms'].append(d)
+
+        return res
+
+    def __str__(self) -> str:
         return 'Execution Environment[' + ', '.join([str(v) for v in self.vms]) + ']'
 
 class VMSetExecutionEnvironmentRequest(ExecutionEnvironmentRequest):

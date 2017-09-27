@@ -103,7 +103,7 @@ class LibcloudComputeProvider(ServiceProvider):
 
         logger.debug('New Instance created with node_id=%s', node.id)
 
-        #5. try to assign a free public ip (currently work for Openstack only
+        #5. try to assign a free public ip (currently work for Openstack only)
         if not node.public_ips:
             try:
                 self.__assign_public_ip(driver, node)
@@ -118,6 +118,12 @@ class LibcloudComputeProvider(ServiceProvider):
                 node = [i for i in driver.list_nodes() if i.uuid == node.uuid][0]
 
         vm = VM(node.id, node.public_ips[0], self.vm_user, self.platform, working_dir=self.working_dir, priv_key=self.ssh_private_key)
+
+        vm.set_sizes(
+            # OpenStack driver put the number of cpu in the vcpus attribute, the Amazon driver put it in extra['cpu']
+            size.vcpus if hasattr(size, 'vcpus') else (size.extra['cpu'] if 'cpu' in size.extra else 0),
+            size.ram,
+            size.disk)
 
         self.__execute_post_create(vm, 5)
         logger.info('New VM %s created and initialized', vm)
