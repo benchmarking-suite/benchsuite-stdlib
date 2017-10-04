@@ -22,7 +22,7 @@ import os
 
 from benchsuite.stdlib.util.ssh import run_ssh_cmd
 from benchsuite.core.model.common import TestExecutor
-from benchsuite.core.model.exception import BashCommandExecutionFailedException
+from benchsuite.core.model.exception import BashCommandExecutionFailedException, NoExecuteCommandsFound
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +160,9 @@ class PureRemoteBashExecutor(TestExecutor):
         cmd = self.test.get_execute_script(vm0.platform)
         if cmd:
             run_ssh_script(vm0, cmd, 'run', self.id, async=async)
+        else:
+            logger.error('No execute commands found for this platform ({0})'.format(vm0.platform))
+            raise NoExecuteCommandsFound(logger.error('No execute commands found for platform {0}'.format(vm0.platform)))
 
     def collect_results(self):
         vm0 = self.env.vms[0]
