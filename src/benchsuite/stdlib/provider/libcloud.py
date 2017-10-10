@@ -162,6 +162,14 @@ class LibcloudComputeProvider(ServiceProvider):
                 logger.warning('Error connecting ({0}). Max number of retries achived. Raising the exception'.format(str(ex)))
                 raise ex
 
+    def get_provder_properties_dict(self):
+        return {
+            'id': self.name,
+            'size': self.size,
+            'image': self.image,
+            'service_type': self.service_type
+        }
+
     @staticmethod
     def load_from_config_file(config: ConfigParser, service_type: str) -> ServiceProvider:
 
