@@ -26,6 +26,64 @@ from benchsuite.core.model.execution import ExecutionResultParser
 logger = logging.getLogger(__name__)
 
 
+class YCSBResultParser(ExecutionResultParser):
+
+    def get_metrics(self, stdout, stderr):
+
+        #
+        # Metrics in the YCSB outputs appears in this format:
+        # [<operation_type>], <metrics>, <value>
+        # e.g.
+        # [INSERT], MaxLatency(us), 14423.0
+        # [SCAN], Operations, 4748.0
+
+
+        lines = stdout.split('\n')
+
+        # filter-out all the non-metrics lines
+        metrics_lines = [l for l in lines if l.startswith('[')]
+
+        # parse all the metrics from the output
+        parsed_metrics = {}
+        for l in metrics_lines:
+            m = re.search('^\[(.+)\],\ (.+),\ (.+)$', l)
+            op_type = m.group(1).lower()
+            op_met = m.group(2)
+            met_val = m.group(3)
+
+            if op_type not in parsed_metrics:
+                parsed_metrics[op_type] = {}
+
+            parsed_metrics[op_type][op_met] = met_val
+
+
+        #keep only interesting metrics, do some sanitization of names
+        out = {
+            'overall_runtime': {'value': parsed_metrics['overall']['RunTime(ms)'], 'unit': 'ms'},
+            'overall_throughput': {'value': parsed_metrics['overall']['Throughput(ops/sec)'], 'unit': 'ops/s'}
+        }
+
+        out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'insert'))
+        out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'read'))
+        out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'update'))
+
+
+        return out
+
+
+    def __get_metrics_by_operation_type(self, parsed_metrics, op_type):
+
+        if op_type not in parsed_metrics:
+            return {}
+
+        return {
+            op_type+'_ops': {'value': int(float(parsed_metrics[op_type]['Operations'])), 'unit': 'num'},
+            op_type+'_latency_avg': {'value': float(parsed_metrics[op_type]['AverageLatency(us)']), 'unit': 'us'},
+            op_type+'_latency_min': {'value': float(parsed_metrics[op_type]['MinLatency(us)']), 'unit': 'us'},
+            op_type+'_latency_max': {'value': float(parsed_metrics[op_type]['MaxLatency(us)']), 'unit': 'us'},
+            op_type+'_latency_95': {'value': float(parsed_metrics[op_type]['95thPercentileLatency(us)']), 'unit': 'us'},
+            op_type+'_latency_99': {'value': float(parsed_metrics[op_type]['99thPercentileLatency(us)']), 'unit': 'us'}
+        }
 
 class FileBenchResultParser(ExecutionResultParser):
 
@@ -62,9 +120,9 @@ class FileBenchResultParser(ExecutionResultParser):
         logger.debug('latency (ms): %s', latency)
 
         return {
-            'n_ops': n_ops,
-            'ops/s': ops_s,
-            'throuput': throughput,
-            'cpu_time': speed,
-            'latency': latency
+            'n_ops': {'value': int(float(n_ops)), 'unit': 'num'},
+            'ops/s': {'value': float(ops_s), 'unit': 'ops/s'},
+            'throughput': {'value': float(throughput), 'unit': 'mb/s'},
+            'cpu_time': {'value': float(speed), 'unit': 'us cpu/s'},
+            'latency': {'value': float(latency), 'unit': 'us'}
         }

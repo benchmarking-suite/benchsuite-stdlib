@@ -24,10 +24,79 @@ import logging
 
 import sys
 
-from benchsuite.core.config import CONFIG_FOLDER_VARIABLE_NAME
-from benchsuite.stdlib.benchmark.parsers import FileBenchResultParser
+from benchsuite.stdlib.benchmark.parsers import FileBenchResultParser, YCSBResultParser
 
+YCSB_OUT_1 = '''
+Adding shard node URL: jdbc:mysql://127.0.0.1:3306/benchmark
+Using shards: 1, batchSize:-1, fetchSize: -1
+[OVERALL], RunTime(ms), 3221.0
+[OVERALL], Throughput(ops/sec), 310.4625892579944
+[TOTAL_GCS_MarkSweepCompact], Count, 0.0
+[TOTAL_GC_TIME_MarkSweepCompact], Time(ms), 0.0
+[TOTAL_GC_TIME_%_MarkSweepCompact], Time(%), 0.0
+[TOTAL_GCS_Copy], Count, 1.0
+[TOTAL_GC_TIME_Copy], Time(ms), 6.0
+[TOTAL_GC_TIME_%_Copy], Time(%), 0.18627755355479667
+[TOTAL_GCs], Count, 1.0
+[TOTAL_GC_TIME], Time(ms), 6.0
+[TOTAL_GC_TIME_%], Time(%), 0.18627755355479667
+[CLEANUP], Operations, 1.0
+[CLEANUP], AverageLatency(us), 987.0
+[CLEANUP], MinLatency(us), 987.0
+[CLEANUP], MaxLatency(us), 987.0
+[CLEANUP], 95thPercentileLatency(us), 987.0
+[CLEANUP], 99thPercentileLatency(us), 987.0
+[READ], Operations, 509.0
+[READ], AverageLatency(us), 316.64636542239685
+[READ], MinLatency(us), 200.0
+[READ], MaxLatency(us), 3645.0
+[READ], 95thPercentileLatency(us), 429.0
+[READ], 99thPercentileLatency(us), 1496.0
+[READ], Return=OK, 509
+[UPDATE], Operations, 491.0
+[UPDATE], AverageLatency(us), 5505.596741344196
+[UPDATE], MinLatency(us), 2256.0
+[UPDATE], MaxLatency(us), 19263.0
+[UPDATE], 95thPercentileLatency(us), 6439.0
+[UPDATE], 99thPercentileLatency(us), 9095.0
+[UPDATE], Return=OK, 491
+'''
 
+YCSB_OUT_2 = '''
+Adding shard node URL: jdbc:mysql://127.0.0.1:3306/benchmark
+Using shards: 1, batchSize:-1, fetchSize: -1
+[OVERALL], RunTime(ms), 3895.0
+[OVERALL], Throughput(ops/sec), 1283.6970474967907
+[TOTAL_GCS_MarkSweepCompact], Count, 0.0
+[TOTAL_GC_TIME_MarkSweepCompact], Time(ms), 0.0
+[TOTAL_GC_TIME_%_MarkSweepCompact], Time(%), 0.0
+[TOTAL_GCS_Copy], Count, 61.0
+[TOTAL_GC_TIME_Copy], Time(ms), 45.0
+[TOTAL_GC_TIME_%_Copy], Time(%), 1.1553273427471118
+[TOTAL_GCs], Count, 61.0
+[TOTAL_GC_TIME], Time(ms), 45.0
+[TOTAL_GC_TIME_%], Time(%), 1.1553273427471118
+[SCAN], Operations, 4748.0
+[SCAN], AverageLatency(us), 401.94945240101094
+[SCAN], MinLatency(us), 112.0
+[SCAN], MaxLatency(us), 9535.0
+[SCAN], 95thPercentileLatency(us), 620.0
+[SCAN], 99thPercentileLatency(us), 1939.0
+[SCAN], Return=OK, 4748
+[CLEANUP], Operations, 1.0
+[CLEANUP], AverageLatency(us), 1002.0
+[CLEANUP], MinLatency(us), 1002.0
+[CLEANUP], MaxLatency(us), 1002.0
+[CLEANUP], 95thPercentileLatency(us), 1002.0
+[CLEANUP], 99thPercentileLatency(us), 1002.0
+[INSERT], Operations, 252.0
+[INSERT], AverageLatency(us), 5983.214285714285
+[INSERT], MinLatency(us), 4336.0
+[INSERT], MaxLatency(us), 14423.0
+[INSERT], 95thPercentileLatency(us), 8131.0
+[INSERT], 99thPercentileLatency(us), 10975.0
+[INSERT], Return=OK, 252
+'''
 
 FILEBENCH_TEST_OUT = '''
 16845: 0.000: Allocated 170MB of shared memory
@@ -65,8 +134,10 @@ if __name__ == '__main__':
 
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-    os.environ[CONFIG_FOLDER_VARIABLE_NAME] = '/home/ggiammat/projects/ENG.CloudPerfect/workspace/testing/bsconfig'
+    #os.environ[CONFIG_FOLDER_VARIABLE_NAME] = '/home/ggiammat/projects/ENG.CloudPerfect/workspace/testing/bsconfig'
 
-    p = FileBenchResultParser()
+    p = YCSBResultParser()
 
-    p.get_metrics(FILEBENCH_TEST_OUT, 'ciao')
+    x = p.get_metrics(YCSB_OUT_1, 'ciao')
+
+    print(x)
