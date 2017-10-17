@@ -87,11 +87,7 @@ class LibcloudComputeProvider(ServiceProvider):
 
         logger.debug('Creating new Instance with image %s and size %s', image.name, size.name)
 
-
-        # fix for EC2
-        if self.libcloud_type == 'ec2' and 'ex_subnet' in self.extra_params:
-            self.extra_params['ex_subnet'] = EC2NetworkSubnet(self.extra_params['ex_subnet'], self.extra_params['ex_subnet'], 'available')
-
+        self.set_up_network_params()
 
 
         #3. create the node and wait until RUNNING
@@ -103,21 +99,20 @@ class LibcloudComputeProvider(ServiceProvider):
 
         logger.debug('New Instance created with node_id=%s', node.id)
 
-        #5. try to assign a free public ip (currently work for Openstack only)
+
+        # if the node has not public ips, try to assign one
         if not node.public_ips:
-            try:
-                self.__assign_public_ip(driver, node)
-            except ProviderConfigurationException as e:
-                logger.error('Got an exception (%s). Rolling back', str(e))
-                node.destroy()
-                raise e
+            ip = self.assign_floating_ip(driver, node)
 
-            # the new public ip could take some time to appear
-            while not node.public_ips:
-                time.sleep(5)
-                node = [i for i in driver.list_nodes() if i.uuid == node.uuid][0]
+            if ip:
+                node.public_ips = [ip]
 
-        vm = VM(node.id, node.public_ips[0], self.vm_user, self.platform, working_dir=self.working_dir, priv_key=self.ssh_private_key)
+        if node.public_ips:
+            vm_id = node.public_ips[0]
+        else:
+            vm_id = node.private_ips[0]
+
+        vm = VM(node.id, vm_id, self.vm_user, self.platform, working_dir=self.working_dir, priv_key=self.ssh_private_key)
 
         vm.set_sizes(
             # OpenStack driver put the number of cpu in the vcpus attribute, the Amazon driver put it in extra['cpu']
@@ -127,15 +122,106 @@ class LibcloudComputeProvider(ServiceProvider):
 
         self.__execute_post_create(vm, 5)
         logger.info('New VM %s created and initialized', vm)
+
         return vm
 
-    def __assign_public_ip(self, driver, node):
+    def set_up_network_params(self):
+
+        driver = self.__get_libcloud_drv()
+
+        if self.libcloud_type == 'openstack':
+
+            networks = driver.ex_list_networks()
+            network = None
+
+            if 'network' in self.extra_params:
+                network = [n for n in networks if n.name == self.extra_params['network']]
+                if network:
+                     logger.debug('Using network {0} as specified in the configuration'.format(network))
+                else:
+                    logger.error('The network {0} specified in the configuration does not exist.')
+            else:
+                if len(networks) == 1:
+                    network = networks
+                    logger.info('Automatically selecting the only existing network: {0}'.format(network[0]))
+
+            if network:
+                self.extra_params['networks'] = network
+            else:
+                logger.warning('Failed to configure the network. The creation of instances could fail')
+
+            return
+
+        if self.libcloud_type == 'ec2':
+
+            networks = driver.ex_list_subnets()
+            network = None
+
+
+            # TODO: re-use the same code used above
+
+            if 'network' in self.extra_params:
+                network = [n for n in networks if n.name == self.extra_params['network']]
+                if network:
+                    logger.debug('Using network {0} as specified in the configuration'.format(network))
+                else:
+                    logger.error('The network {0} specified in the configuration does not exist.')
+            else:
+                if len(networks) == 1:
+                    network = networks
+                    logger.info('Automatically selecting the only existing network: {0}'.format(network[0]))
+
+            if network:
+                self.extra_params['ex_subnet'] = network[0] # this changes wrt openstack. Here only one network is accepted
+            else:
+                logger.warning('Failed to configure the network. The creation of instances could fail')
+
+
+            sec_groups = driver.ex_get_security_groups()
+            sec_group = None
+
+            if 'security_group' in self.extra_params:
+                sec_group = [s for s in sec_groups if s.name == self.extra_params['security_group']]
+                if sec_group:
+                    logger.debug('Using the security group {0} as specified in the configuration'.format(sec_group))
+                else:
+                    logger.error('The security group {0} specified in the configuration does not exist.')
+            else:
+                if len(sec_groups) == 1:
+                    sec_group = sec_groups[0]
+                    logger.info('Automatically selecting the only existing security group: {0}'.format(sec_group))
+
+            if sec_group:
+                self.extra_params['ex_security_group_ids'] = [sec_group[0].id]
+            else:
+                logger.warning('Failed to configure the security group. The creation of instances could fail')
+
+            return
+
+
+
+    def assign_floating_ip(self, driver, node):
+
+        if not self.libcloud_type == 'openstack':
+            # supported only by openstack driver
+            logger.debug('Public IP assignment only supported for Openstack.')
+            return
+
+        if 'benchsuite.openstack.no_floating_ip' in self.extra_params and \
+            self.extra_params['benchsuite.openstack.no_floating_ip'] == 'true':
+            # explicitly skip the floating ip assignment
+            logger.debug('Public IP assigment will be skipped because '
+                         'benchsuite.openstack.no_floating_ip is set to true')
+            return
+
         p_ip = self.__get_available_public_ip(driver)
+
         if p_ip:
             logger.debug('Trying to assign the public ip %s to the new instance', p_ip)
             driver.ex_attach_floating_ip_to_node(node, p_ip)
+            return p_ip.ip_address
         else:
-            raise ProviderConfigurationException('No floating public IPs available! Cannot continue')
+            logger.error('No floating public IPs available! Cannot assign a public ip to the instance')
 
     def __get_available_public_ip(self, driver):
         public_ips = driver.ex_list_floating_ips()
@@ -192,6 +278,13 @@ class LibcloudComputeProvider(ServiceProvider):
         if 'libcloud_extra_params' in config:
             for k in config['libcloud_extra_params']:
                 libcloud_additional_params[k] = config['libcloud_extra_params'][k]
+
+
+        # sanitize auth url parameter. If it ends with "/" libcloud does not behave correctly
+        if 'ex_force_auth_url' in libcloud_additional_params:
+            libcloud_additional_params['ex_force_auth_url'] = \
+                libcloud_additional_params['ex_force_auth_url'].rstrip('/')
+
 
         cp.extra_params = libcloud_additional_params
 
