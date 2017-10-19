@@ -192,7 +192,7 @@ class LibcloudComputeProvider(ServiceProvider):
                     logger.info('Automatically selecting the only existing security group: {0}'.format(sec_group))
 
             if sec_group:
-                self.extra_params['ex_security_group_ids'] = [sec_group[0].id]
+                self.extra_params['ex_security_group_ids'] = [sec_group.id]
             else:
                 logger.warning('Failed to configure the security group. The creation of instances could fail')
 
