@@ -181,11 +181,12 @@ class LibcloudComputeProvider(ServiceProvider):
             sec_group = None
 
             if 'security_group' in self.extra_params:
-                sec_group = [s for s in sec_groups if s.name == self.extra_params['security_group'] or s.id == self.extra_params['security_group']]
-                if sec_group:
+                t = [s for s in sec_groups if s.name == self.extra_params['security_group'] or s.id == self.extra_params['security_group']]
+                if len(t) == 1:
+                    sec_group = t[0]
                     logger.debug('Using the security group {0} as specified in the configuration'.format(sec_group))
                 else:
-                    logger.error('The security group {0} specified in the configuration does not exist.')
+                    logger.error('The security group {0} specified in the configuration has multiple matches or does not exist.')
             else:
                 if len(sec_groups) == 1:
                     sec_group = sec_groups[0]
