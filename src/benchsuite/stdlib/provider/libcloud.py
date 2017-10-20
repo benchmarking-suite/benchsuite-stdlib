@@ -135,7 +135,7 @@ class LibcloudComputeProvider(ServiceProvider):
             network = None
 
             if 'network' in self.extra_params:
-                network = [n for n in networks if n.name == self.extra_params['network']]
+                network = [n for n in networks if n.name == self.extra_params['network'] or n.id == self.extra_params['network']]
                 if network:
                      logger.debug('Using network {0} as specified in the configuration'.format(network))
                 else:
@@ -161,7 +161,7 @@ class LibcloudComputeProvider(ServiceProvider):
             # TODO: re-use the same code used above
 
             if 'network' in self.extra_params:
-                network = [n for n in networks if n.name == self.extra_params['network']]
+                network = [n for n in networks if n.name == self.extra_params['network'] or n.id == self.extra_params['network']]
                 if network:
                     logger.debug('Using network {0} as specified in the configuration'.format(network))
                 else:
@@ -181,7 +181,7 @@ class LibcloudComputeProvider(ServiceProvider):
             sec_group = None
 
             if 'security_group' in self.extra_params:
-                sec_group = [s for s in sec_groups if s.name == self.extra_params['security_group']]
+                sec_group = [s for s in sec_groups if s.name == self.extra_params['security_group'] or s.id == self.extra_params['security_group']]
                 if sec_group:
                     logger.debug('Using the security group {0} as specified in the configuration'.format(sec_group))
                 else:
