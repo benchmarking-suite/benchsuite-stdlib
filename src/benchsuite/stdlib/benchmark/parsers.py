@@ -59,8 +59,7 @@ class YCSBResultParser(ExecutionResultParser):
 
         #keep only interesting metrics, do some sanitization of names
         out = {
-            'overall_runtime': {'value': parsed_metrics['overall']['RunTime(ms)'], 'unit': 'ms'},
-            'overall_throughput': {'value': parsed_metrics['overall']['Throughput(ops/sec)'], 'unit': 'ops/s'}
+            'ops_throughput': {'value': parsed_metrics['overall']['Throughput(ops/sec)'], 'unit': 'ops/s'}
         }
 
         out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'insert'))
@@ -120,9 +119,9 @@ class FileBenchResultParser(ExecutionResultParser):
         logger.debug('latency (ms): %s', latency)
 
         return {
-            'n_ops': {'value': int(float(n_ops)), 'unit': 'num'},
-            'ops/s': {'value': float(ops_s), 'unit': 'ops/s'},
+            'ops': {'value': int(float(n_ops)), 'unit': 'num'},
+            'ops_throughput': {'value': float(ops_s), 'unit': 'ops/s'},
             'throughput': {'value': float(throughput), 'unit': 'mb/s'},
-            'cpu_time': {'value': float(speed), 'unit': 'us cpu/s'},
-            'latency': {'value': float(latency), 'unit': 'us'}
+            'cputime': {'value': float(speed), 'unit': 'us cpu/s'},
+            'latency_avg': {'value': float(latency), 'unit': 'us'}
         }
