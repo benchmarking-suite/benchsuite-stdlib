@@ -126,7 +126,7 @@ class LibcloudComputeProvider(ServiceProvider):
             size.ram,
             size.disk)
 
-        self.__execute_post_create(vm, 5)
+        self.__execute_post_create(vm, 10)
         logger.info('New VM %s created and initialized', vm)
 
         return vm
@@ -200,7 +200,7 @@ class LibcloudComputeProvider(ServiceProvider):
             if retries > 0:
                 logger.warning('Error connecting ({0}). The instance could be not ready yet. '
                                'Waiting 10 seconds and retry for {1} times'.format(str(ex), retries))
-                time.sleep(10)
+                time.sleep(30)
                 self.__execute_post_create(vm,retries)
             else:
                 logger.warning('Error connecting ({0}). Max number of retries achived. Raising the exception'.format(str(ex)))
