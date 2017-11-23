@@ -96,7 +96,7 @@ class LibcloudComputeProvider(ServiceProvider):
 
         #3. create the node and wait until RUNNING
         rand_name = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-        name = 'benchmarking-'+rand_name
+        name = 'benchsuite-'+rand_name
         node = driver.create_node(name=name, image=image, size=size, ex_keyname=self.key_name, **self.extra_params)
         driver.wait_until_running([node], wait_period=10)
 
