@@ -26,6 +26,8 @@ from libcloud.compute.providers import get_driver
 from os import read
 
 from benchsuite.core.model.exception import ProviderConfigurationException
+from benchsuite.stdlib.util.libcloud_helper import get_openstack_network, \
+    get_openstack_security_group, get_ec2_security_group, get_ec2_network
 from benchsuite.stdlib.util.ssh import run_ssh_cmd
 from benchsuite.core.model.execution import ExecutionEnvironmentRequest, ExecutionEnvironment
 from benchsuite.core.model.provider import ServiceProvider
@@ -131,74 +133,25 @@ class LibcloudComputeProvider(ServiceProvider):
 
         if self.libcloud_type == 'openstack':
 
-            networks = driver.ex_list_networks()
-            network = None
-
             if 'network' in self.extra_params:
-                network = [n for n in networks if n.name == self.extra_params['network'] or n.id == self.extra_params['network']]
-                if network:
-                     logger.debug('Using network {0} as specified in the configuration'.format(network))
-                else:
-                    logger.error('The network {0} specified in the configuration does not exist.')
-            else:
-                if len(networks) == 1:
-                    network = networks
-                    logger.info('Automatically selecting the only existing network: {0}'.format(network[0]))
+                self.extra_params.update(get_openstack_network(
+                    driver, self.extra_params['network']))
 
-            if network:
-                self.extra_params['networks'] = network
-            else:
-                logger.warning('Failed to configure the network. The creation of instances could fail')
-
-            return
+            if 'security_group' in self.extra_params:
+                self.extra_params.update(get_openstack_security_group(
+                    driver, self.extra_params['security_group'])
+                )
 
         if self.libcloud_type == 'ec2':
 
-            networks = driver.ex_list_subnets()
-            network = None
-
-
-            # TODO: re-use the same code used above
-
             if 'network' in self.extra_params:
-                network = [n for n in networks if n.name == self.extra_params['network'] or n.id == self.extra_params['network']]
-                if network:
-                    logger.debug('Using network {0} as specified in the configuration'.format(network))
-                else:
-                    logger.error('The network {0} specified in the configuration does not exist.')
-            else:
-                if len(networks) == 1:
-                    network = networks
-                    logger.info('Automatically selecting the only existing network: {0}'.format(network[0]))
-
-            if network:
-                self.extra_params['ex_subnet'] = network[0] # this changes wrt openstack. Here only one network is accepted
-            else:
-                logger.warning('Failed to configure the network. The creation of instances could fail')
-
-
-            sec_groups = driver.ex_get_security_groups()
-            sec_group = None
+                self.extra_params.update(get_ec2_network(
+                    driver, self.extra_params['network']))
 
             if 'security_group' in self.extra_params:
-                t = [s for s in sec_groups if s.name == self.extra_params['security_group'] or s.id == self.extra_params['security_group']]
-                if len(t) == 1:
-                    sec_group = t[0]
-                    logger.debug('Using the security group {0} as specified in the configuration'.format(sec_group))
-                else:
-                    logger.error('The security group {0} specified in the configuration has multiple matches or does not exist.')
-            else:
-                if len(sec_groups) == 1:
-                    sec_group = sec_groups[0]
-                    logger.info('Automatically selecting the only existing security group: {0}'.format(sec_group))
-
-            if sec_group:
-                self.extra_params['ex_security_group_ids'] = [sec_group.id]
-            else:
-                logger.warning('Failed to configure the security group. The creation of instances could fail')
-
-            return
-
+                self.extra_params.update(get_ec2_security_group(
+                    driver, self.extra_params['security_group'])
+                )
 
 
     def assign_floating_ip(self, driver, node):
