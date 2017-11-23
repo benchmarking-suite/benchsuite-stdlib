@@ -53,7 +53,7 @@ def get_openstack_security_group(driver, requested_security_group):
     if len(selected_security_groups) > 1:
         logger.warning('Multiple security groups matches the requested security group. Selecting the frist one')
 
-    return {'ex_security_groups': selected_security_groups[0]}
+    return {'ex_security_groups': [selected_security_groups[0]]}
 
 
 def get_ec2_network(driver, requested_network):
