@@ -18,6 +18,8 @@
 # CloudPerfect EU project (https://cloudperfect.eu/)
 
 import logging
+import random
+import string
 import time
 from configparser import ConfigParser
 
@@ -93,7 +95,9 @@ class LibcloudComputeProvider(ServiceProvider):
 
 
         #3. create the node and wait until RUNNING
-        node = driver.create_node(name='benchsuite-node', image=image, size=size, ex_keyname=self.key_name, **self.extra_params)
+        rand_name = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        name = 'benchsuite-'+rand_name
+        node = driver.create_node(name=name, image=image, size=size, ex_keyname=self.key_name, **self.extra_params)
         driver.wait_until_running([node], wait_period=10)
 
         #4. refresh the info of the node
