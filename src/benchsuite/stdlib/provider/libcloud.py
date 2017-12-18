@@ -23,9 +23,7 @@ import string
 import time
 from configparser import ConfigParser
 
-from libcloud.compute.drivers.ec2 import EC2NetworkSubnet
 from libcloud.compute.providers import get_driver
-from os import read
 
 from benchsuite.core.model.exception import ProviderConfigurationException
 from benchsuite.stdlib.util.libcloud_helper import get_openstack_network, \
@@ -56,6 +54,28 @@ class LibcloudComputeProvider(ServiceProvider):
         self.post_create_script = 'echo "Hello World!"'
         self.vms_pool = []
 
+        # used to cache some values, but not persisted
+        self._driver = None
+        self._newvm_network = None
+        self._newvm_security_group = None
+
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+
+        # exclude some fields used only for caching
+        del state['_driver']
+        del state['_newvm_network']
+        del state['_newvm_security_group']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
+        self._driver = None
+        self._newvm_network = None
+        self._newvm_security_group = None
+
 
     def get_execution_environment(self, request: ExecutionEnvironmentRequest) -> ExecutionEnvironment:
         if len(self.vms_pool) < request.n_vms:
@@ -63,6 +83,8 @@ class LibcloudComputeProvider(ServiceProvider):
                 self.vms_pool.append(self.__create_vm())
 
         return VMSetExecutionEnvironment(self.vms_pool[:request.n_vms])
+
+
 
     def destroy_service(self):
         driver = self.__get_libcloud_drv()
@@ -73,10 +95,7 @@ class LibcloudComputeProvider(ServiceProvider):
             logger.info('Deleting node ' + n.id)
             n.destroy()
 
-    def __get_libcloud_drv(self):
-        drv = get_driver(self.libcloud_type)
-        driver = drv(self.access_id, self.secret_key, **self.extra_params)
-        return driver
+
 
     def __create_vm(self):
 
@@ -91,13 +110,16 @@ class LibcloudComputeProvider(ServiceProvider):
 
         logger.debug('Creating new Instance with image %s and size %s', image.name, size.name)
 
-        self.set_up_network_params()
-
 
         #3. create the node and wait until RUNNING
         rand_name = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
         name = 'benchsuite-'+rand_name
-        node = driver.create_node(name=name, image=image, size=size, ex_keyname=self.key_name, **self.extra_params)
+
+        extra_args = self.extra_params.copy()
+        extra_args.update(self.__get_newvm_network_param() or {})
+        extra_args.update(self.__get_newvm_security_group_param() or {})
+
+        node = driver.create_node(name=name, image=image, size=size, ex_keyname=self.key_name, **extra_args)
         driver.wait_until_running([node], wait_period=10)
 
         #4. refresh the info of the node
@@ -108,7 +130,7 @@ class LibcloudComputeProvider(ServiceProvider):
 
         # if the node has not public ips, try to assign one
         if not node.public_ips:
-            ip = self.assign_floating_ip(driver, node)
+            ip = self.__assign_floating_ip(driver, node)
 
             if ip:
                 node.public_ips = [ip]
@@ -131,34 +153,8 @@ class LibcloudComputeProvider(ServiceProvider):
 
         return vm
 
-    def set_up_network_params(self):
 
-        driver = self.__get_libcloud_drv()
-
-        if self.libcloud_type == 'openstack':
-
-            if 'network' in self.extra_params:
-                self.extra_params.update(get_openstack_network(
-                    driver, self.extra_params['network']))
-
-            if 'security_group' in self.extra_params:
-                self.extra_params.update(get_openstack_security_group(
-                    driver, self.extra_params['security_group'])
-                )
-
-        if self.libcloud_type == 'ec2':
-
-            if 'network' in self.extra_params:
-                self.extra_params.update(get_ec2_network(
-                    driver, self.extra_params['network']))
-
-            if 'security_group' in self.extra_params:
-                self.extra_params.update(get_ec2_security_group(
-                    driver, self.extra_params['security_group'])
-                )
-
-
-    def assign_floating_ip(self, driver, node):
+    def __assign_floating_ip(self, driver, node):
 
         if not self.libcloud_type == 'openstack':
             # supported only by openstack driver
@@ -199,7 +195,7 @@ class LibcloudComputeProvider(ServiceProvider):
 
             if retries > 0:
                 logger.warning('Error connecting ({0}). The instance could be not ready yet. '
-                               'Waiting 10 seconds and retry for {1} times'.format(str(ex), retries))
+                               'Waiting 30 seconds and retry for {1} times'.format(str(ex), retries))
                 time.sleep(30)
                 self.__execute_post_create(vm,retries)
             else:
@@ -213,6 +209,46 @@ class LibcloudComputeProvider(ServiceProvider):
             'image': self.image,
             'service_type': self.service_type
         }
+
+
+
+    def __get_libcloud_drv(self):
+
+        if not self._driver:  # caches the driver in the self._driver variable
+            drv = get_driver(self.libcloud_type)
+            self._driver = drv(self.access_id, self.secret_key, **self.extra_params)
+        return self._driver
+
+
+    def __get_newvm_network_param(self):
+
+        if not self._newvm_network:
+            if 'network' in self.extra_params:
+                if self.libcloud_type == 'openstack':
+                    self._newvm_network = get_openstack_network(
+                        self.__get_libcloud_drv(), self.extra_params['network'])
+                if self.libcloud_type == 'ec2':
+                    self._newvm_network = get_ec2_network(
+                        self.__get_libcloud_drv(), self.extra_params['network'])
+
+        return self._newvm_network
+
+
+    def __get_newvm_security_group_param(self):
+
+        if not self._newvm_security_group:
+            if 'security_group' in self.extra_params:
+                if self.libcloud_type == 'openstack':
+                    self._newvm_security_group = get_openstack_security_group(
+                        self.__get_libcloud_drv(), self.extra_params['security_group'])
+                if self.libcloud_type == 'ec2':
+                    self._newvm_security_group = get_ec2_security_group(
+                        self.__get_libcloud_drv(), self.extra_params['security_group'])
+
+        return self._newvm_security_group
+
+
+
 
     @staticmethod
     def load_from_config_file(config: ConfigParser, service_type: str) -> ServiceProvider:
