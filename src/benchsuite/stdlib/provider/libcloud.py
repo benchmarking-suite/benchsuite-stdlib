@@ -148,6 +148,7 @@ class LibcloudComputeProvider(ServiceProvider):
             size.ram,
             size.disk)
 
+        # TODO: add an option to set the number of retries from the provider configuration file
         self.__execute_post_create(vm, 10)
         logger.info('New VM %s created and initialized', vm)
 
@@ -214,6 +215,7 @@ class LibcloudComputeProvider(ServiceProvider):
 
     def __get_libcloud_drv(self):
 
+        #TODO add auth_url and auth_version in openstack
         if not self._driver:  # caches the driver in the self._driver variable
             drv = get_driver(self.libcloud_type)
             self._driver = drv(self.access_id, self.secret_key, **self.extra_params)
@@ -251,6 +253,47 @@ class LibcloudComputeProvider(ServiceProvider):
 
 
     @staticmethod
+    def __load_extra_params(config):
+
+        known_extra_keys = ['region', 'network', 'security_group',
+                            'auth_url', 'auth_version', 'tenant']
+
+        extra_params = {}
+
+        for k, v in config['provider'].items():
+            if k in known_extra_keys or k.startswith('ex_'):
+                extra_params[k] = v
+
+        logger.debug('Loaded following extra parameters: ' + str(extra_params))
+
+        # continue to support old format (with libcloud extra parameter in their own section)
+        if 'libcloud_extra_params' in config:
+            extra_params.update(config['libcloud_extra_params'])
+
+        # map some parames to the Openstack drvier parameters
+        if 'auth_url' in extra_params and not 'ex_force_auth_url' in extra_params:
+            extra_params['ex_force_auth_url'] = extra_params['auth_url']
+
+        if 'auth_version' in extra_params and not 'ex_force_auth_version' in extra_params:
+            extra_params['ex_force_auth_version'] = extra_params['auth_version']
+
+        if 'region' in extra_params and not 'ex_force_service_region' in extra_params:
+            extra_params['ex_force_service_region'] = extra_params['region']
+
+        if 'tenant' in extra_params and not 'ex_tenant_name' in extra_params:
+            extra_params['ex_tenant_name'] = extra_params['tenant']
+
+        # sanitize auth url parameter. If it ends with "/" libcloud does not behave correctly
+        if 'ex_force_auth_url' in extra_params:
+            extra_params['ex_force_auth_url'] = \
+                extra_params['ex_force_auth_url'].rstrip('/')
+        if 'auth_url' in extra_params:
+            extra_params['auth_url'] = extra_params['auth_url'].rstrip('/')
+
+        return extra_params
+
+
+    @staticmethod
     def load_from_config_file(config: ConfigParser, service_type: str) -> ServiceProvider:
 
         cp = LibcloudComputeProvider(
@@ -261,26 +304,9 @@ class LibcloudComputeProvider(ServiceProvider):
             config['provider']['secret_key']
         )
 
-        libcloud_additional_params = {}
+        cp.extra_params = LibcloudComputeProvider.__load_extra_params(config)
 
-        # consider all remaining properties in the [provider] section as libcloud extra params
-        for k, v in config['provider'].items():
-            if k not in ['name', 'driver', 'access_id', 'secret_key']:
-                libcloud_additional_params[k] = v
-
-        # continue to support old format (with libcloud extra parameter in their own section)
-        if 'libcloud_extra_params' in config:
-            for k in config['libcloud_extra_params']:
-                libcloud_additional_params[k] = config['libcloud_extra_params'][k]
-
-
-        # sanitize auth url parameter. If it ends with "/" libcloud does not behave correctly
-        if 'ex_force_auth_url' in libcloud_additional_params:
-            libcloud_additional_params['ex_force_auth_url'] = \
-                libcloud_additional_params['ex_force_auth_url'].rstrip('/')
-
-
-        cp.extra_params = libcloud_additional_params
+        logger.debug('')
 
         if service_type not in config:
             raise ProviderConfigurationException(
@@ -299,7 +325,6 @@ class LibcloudComputeProvider(ServiceProvider):
             cp.ssh_private_key = cloud_service_config['ssh_private_key']
         else:
             cp.ssh_private_key = open(cloud_service_config['key_path']).read()
-
 
         if 'working_dir' in cloud_service_config:
             cp.working_dir = cloud_service_config['working_dir']
