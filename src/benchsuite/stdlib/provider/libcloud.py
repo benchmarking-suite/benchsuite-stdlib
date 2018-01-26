@@ -112,7 +112,9 @@ class LibcloudComputeProvider(ServiceProvider):
 
 
         #3. create the node and wait until RUNNING
-        rand_name = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        rand_name = ''.join(
+            [random.choice(string.ascii_lowercase + string.digits) for i in range(6)])
+
         name = 'benchsuite-'+rand_name
 
         extra_args = self.extra_params.copy()
