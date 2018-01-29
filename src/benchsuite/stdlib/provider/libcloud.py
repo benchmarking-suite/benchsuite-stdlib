@@ -36,6 +36,19 @@ from benchsuite.stdlib.execution.vm_environment import VMSetExecutionEnvironment
 logger = logging.getLogger(__name__)
 
 
+known_extra_keys = [
+    'region',
+    'network',
+    'security_group',
+    'auth_url',
+    'auth_version',
+    'tenant',
+    'new_vm.connection_retry_period',
+    'new_vm.connection_retry_times'
+]
+
+
+
 class LibcloudComputeProvider(ServiceProvider):
 
     def __init__(self, name, service_type, driver, access_id, secret_key):
@@ -151,7 +164,7 @@ class LibcloudComputeProvider(ServiceProvider):
             size.disk)
 
         # TODO: add an option to set the number of retries from the provider configuration file
-        self.__execute_post_create(vm, 10)
+        self.__execute_post_create(vm, self.extra_params.get('new_vm.connection_retry_times', 10))
         logger.info('New VM %s created and initialized', vm)
 
         return vm
@@ -197,12 +210,13 @@ class LibcloudComputeProvider(ServiceProvider):
             retries -= 1
 
             if retries > 0:
+                period = self.extra_params.get('new_vm.connection_retry_period', 30)
                 logger.warning('Error connecting ({0}). The instance could be not ready yet. '
-                               'Waiting 30 seconds and retry for {1} times'.format(str(ex), retries))
-                time.sleep(30)
+                               'Waiting {2} seconds and retry for {1} times'.format(str(ex), retries, period))
+                time.sleep(period)
                 self.__execute_post_create(vm,retries)
             else:
-                logger.warning('Error connecting ({0}). Max number of retries achived. Raising the exception'.format(str(ex)))
+                logger.warning('Error connecting ({0}). Max number of retries achieved. Raising the exception'.format(str(ex)))
                 raise ex
 
     def get_provder_properties_dict(self):
@@ -257,8 +271,6 @@ class LibcloudComputeProvider(ServiceProvider):
     @staticmethod
     def __load_extra_params(config):
 
-        known_extra_keys = ['region', 'network', 'security_group',
-                            'auth_url', 'auth_version', 'tenant']
 
         extra_params = {}
 
