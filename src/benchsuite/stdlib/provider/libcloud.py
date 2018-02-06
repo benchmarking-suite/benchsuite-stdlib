@@ -284,7 +284,8 @@ class LibcloudComputeProvider(ServiceProvider):
 
         for k, v in config['provider'].items():
             if k in known_extra_keys or k.startswith('ex_'):
-                extra_params[k] = v
+                if v:
+                    extra_params[k] = v
 
         logger.debug('Loaded following extra parameters: ' + str(extra_params))
 
