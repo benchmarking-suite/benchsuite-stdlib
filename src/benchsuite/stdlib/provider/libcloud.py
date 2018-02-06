@@ -47,6 +47,13 @@ known_extra_keys = [
     'new_vm.connection_retry_times'
 ]
 
+known_extra_params_defaults = {
+    "region": "RegionOne",
+    "tenant": "_set_to_access_id_value",
+    'new_vm.connection_retry_period': 30,
+    'new_vm.connection_retry_times': 10
+}
+
 
 
 class LibcloudComputeProvider(ServiceProvider):
@@ -271,8 +278,9 @@ class LibcloudComputeProvider(ServiceProvider):
     @staticmethod
     def __load_extra_params(config):
 
-
-        extra_params = {}
+        # start with default values
+        extra_params = dict(known_extra_params_defaults)
+        extra_params['tenant'] = config['provider']['access_id']
 
         for k, v in config['provider'].items():
             if k in known_extra_keys or k.startswith('ex_'):
