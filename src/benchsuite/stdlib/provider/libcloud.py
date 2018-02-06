@@ -47,15 +47,6 @@ known_extra_keys = [
     'new_vm.connection_retry_times'
 ]
 
-known_extra_params_defaults = {
-    "region": "RegionOne",
-    "tenant": "_set_to_access_id_value",
-    'new_vm.connection_retry_period': 30,
-    'new_vm.connection_retry_times': 10
-}
-
-
-
 class LibcloudComputeProvider(ServiceProvider):
 
     def __init__(self, name, service_type, driver, access_id, secret_key):
@@ -171,7 +162,7 @@ class LibcloudComputeProvider(ServiceProvider):
             size.disk)
 
         # TODO: add an option to set the number of retries from the provider configuration file
-        self.__execute_post_create(vm, self.extra_params.get('new_vm.connection_retry_times', 10))
+        self.__execute_post_create(vm, self.extra_params.get('new_vm.connection_retry_times', 20))
         logger.info('New VM %s created and initialized', vm)
 
         return vm
@@ -279,7 +270,7 @@ class LibcloudComputeProvider(ServiceProvider):
     def __load_extra_params(config):
 
         # start with default values
-        extra_params = dict(known_extra_params_defaults)
+        extra_params = {}
         extra_params['tenant'] = config['provider']['access_id']
 
         for k, v in config['provider'].items():
