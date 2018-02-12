@@ -44,7 +44,8 @@ known_extra_keys = [
     'auth_version',
     'tenant',
     'new_vm.connection_retry_period',
-    'new_vm.connection_retry_times'
+    'new_vm.connection_retry_times',
+    'benchsuite.openstack.no_floating_ip'
 ]
 
 class LibcloudComputeProvider(ServiceProvider):
@@ -106,8 +107,6 @@ class LibcloudComputeProvider(ServiceProvider):
             logger.info('Deleting node ' + n.id)
             n.destroy()
 
-
-
     def __create_vm(self):
 
         #1. get the driver
@@ -161,9 +160,16 @@ class LibcloudComputeProvider(ServiceProvider):
             size.ram,
             size.disk)
 
-        # TODO: add an option to set the number of retries from the provider configuration file
-        self.__execute_post_create(vm, self.extra_params.get('new_vm.connection_retry_times', 20))
-        logger.info('New VM %s created and initialized', vm)
+
+        try :
+            self.__execute_post_create(vm, int(self.extra_params.get('new_vm.connection_retry_times', 20)))
+            logger.info('New VM %s created and initialized', vm)
+        except Exception as ex:
+            logger.error('Exception occurred during VM initialization: {0}', ex.strerror)
+            logger.error('Destroying VM due to the initialization errors')
+            # destroying the node created
+            node.destroy()
+            raise ex
 
         return vm
 
@@ -211,7 +217,7 @@ class LibcloudComputeProvider(ServiceProvider):
                 period = self.extra_params.get('new_vm.connection_retry_period', 30)
                 logger.warning('Error connecting ({0}). The instance could be not ready yet. '
                                'Waiting {2} seconds and retry for {1} times'.format(str(ex), retries, period))
-                time.sleep(period)
+                time.sleep(int(period))
                 self.__execute_post_create(vm,retries)
             else:
                 logger.warning('Error connecting ({0}). Max number of retries achieved. Raising the exception'.format(str(ex)))
@@ -262,8 +268,6 @@ class LibcloudComputeProvider(ServiceProvider):
                         self.__get_libcloud_drv(), self.extra_params['security_group'])
 
         return self._newvm_security_group
-
-
 
 
     @staticmethod
