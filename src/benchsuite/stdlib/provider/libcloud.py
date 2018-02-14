@@ -161,12 +161,17 @@ class LibcloudComputeProvider(ServiceProvider):
             size.disk)
 
 
+        # exexute post-creation scripts. This is also used to verify that the VM is accessible
+        # through ssh. If the execution fails, we destroy the VM
         try :
             self.__execute_post_create(vm, int(self.extra_params.get('new_vm.connection_retry_times', 20)))
             logger.info('New VM %s created and initialized', vm)
+
         except Exception as ex:
-            logger.error('Exception occurred during VM initialization: {0}', ex.strerror)
+            logger.error('{0} occurred during VM initialization: {1}'.format(
+                ex.__class__.__name__, str(ex)))
             logger.error('Destroying VM due to the initialization errors')
+
             # destroying the node created
             node.destroy()
             raise ex
