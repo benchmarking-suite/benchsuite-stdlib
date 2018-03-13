@@ -16,6 +16,7 @@
 #
 # Developed in the ARTIST EU project (www.artist-project.eu) and in the
 # CloudPerfect EU project (https://cloudperfect.eu/)
+import logging
 from io import StringIO
 
 import paramiko
@@ -37,6 +38,8 @@ import paramiko
 from paramiko import RSAKey
 
 
+logger = logging.getLogger(__name__)
+
 def ssh_transfer_output(vm, name, dest):
     out = '/tmp/' + name + '.out'
     try:
@@ -49,14 +52,18 @@ def ssh_transfer_output(vm, name, dest):
         ssh.close()
 
 
-def run_ssh_cmd(vm, cmd, needs_pty=False):
+
+def run_ssh_cmd(vm, cmd, async=False, needs_pty=False):
     '''
     
     
     sometime /etc/sudoers is configured to require a tty to execute a command with sudo. In this case, set needs_pty to
-    True. But if needs_pty is True, you cannot run a command asyncrounously
+    True. But if needs_pty is True, you cannot run a command asyncrounously (check if this is really true)
     
     Defaults    !requiretty
+
+    If aysnc is true, return code is 0 and stdout and stderr are both empty strings. That's because the function
+    returns before they are available
 
     :param vm: 
     :param cmd: 
@@ -74,12 +81,17 @@ def run_ssh_cmd(vm, cmd, needs_pty=False):
         else:
             ssh.connect(hostname=vm.ip, port=22, username=vm.username, password=vm.password)
 
+        logger.debug('Executing command on the remote host: "' + cmd+'"')
         stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=needs_pty)
+
+        if async:
+            return (0, '', '')
+
         exit_status = stdout.channel.recv_exit_status()
 
         out = stdout.read().decode("utf-8")
         err = stderr.read().decode("utf-8")
-        #print('out: {0}\nerr: {1}\nexit status: {2}'.format(out, err, exit_status))
+
         return (exit_status, out, err)
 
         # chan = ssh.get_transport().open_session()
