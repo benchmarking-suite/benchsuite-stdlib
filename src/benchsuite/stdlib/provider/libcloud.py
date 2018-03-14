@@ -132,7 +132,7 @@ class LibcloudComputeProvider(ServiceProvider):
         extra_args.update(self.__get_newvm_security_group_param() or {})
 
         node = driver.create_node(name=name, image=image, size=size, ex_keyname=self.key_name, **extra_args)
-        driver.wait_until_running([node], wait_period=10)
+        driver.wait_until_running([node], wait_period=10, ssh_interface='private_ips')
 
         #4. refresh the info of the node
         node = [i for i in driver.list_nodes() if i.uuid == node.uuid][0]
