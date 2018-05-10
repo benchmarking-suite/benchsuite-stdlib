@@ -27,7 +27,8 @@ from libcloud.compute.providers import get_driver
 
 from benchsuite.core.model.exception import ProviderConfigurationException
 from benchsuite.stdlib.util.libcloud_helper import get_openstack_network, \
-    get_openstack_security_group, get_ec2_security_group, get_ec2_network
+    get_openstack_security_group, get_ec2_security_group, get_ec2_network, \
+    create_keypair, destroy_keypair
 from benchsuite.stdlib.util.ssh import run_ssh_cmd
 from benchsuite.core.model.execution import ExecutionEnvironmentRequest, ExecutionEnvironment
 from benchsuite.core.model.provider import ServiceProvider
@@ -60,6 +61,7 @@ class LibcloudComputeProvider(ServiceProvider):
         self.size = None
         self.key_name = None
         self.ssh_private_key = None
+        self.keypair_generated = False
         self.vm_user = None
         self.platform = None
         self.working_dir = None
@@ -96,8 +98,6 @@ class LibcloudComputeProvider(ServiceProvider):
 
         return VMSetExecutionEnvironment(self.vms_pool[:request.n_vms])
 
-
-
     def destroy_service(self):
         driver = self.__get_libcloud_drv()
         nodes_id = [v.id for v in self.vms_pool]
@@ -106,6 +106,9 @@ class LibcloudComputeProvider(ServiceProvider):
         for n in to_delete:
             logger.info('Deleting node ' + n.id)
             n.destroy()
+
+        if self.keypair_generated:
+            destroy_keypair(driver, self.key_name)
 
     def __create_vm(self):
 
@@ -126,6 +129,10 @@ class LibcloudComputeProvider(ServiceProvider):
             [random.choice(string.ascii_lowercase + string.digits) for i in range(6)])
 
         name = 'benchsuite-'+rand_name
+
+        if not self.key_name or not self.ssh_private_key:
+            self.key_name, self.ssh_private_key = create_keypair(driver)
+            self.keypair_generated = True
 
         extra_args = self.extra_params.copy()
         extra_args.update(self.__get_newvm_network_param() or {})
@@ -236,8 +243,6 @@ class LibcloudComputeProvider(ServiceProvider):
             'service_type': self.service_type
         }
 
-
-
     def __get_libcloud_drv(self):
 
         #TODO add auth_url and auth_version in openstack
@@ -339,15 +344,19 @@ class LibcloudComputeProvider(ServiceProvider):
 
         cp.image = cloud_service_config['image']
         cp.size = cloud_service_config['size']
-        cp.key_name = cloud_service_config['key_name']
         cp.vm_user = cloud_service_config['vm_user']
         cp.working_dir = '/home/' + cloud_service_config['vm_user'] # default value
         cp.platform = cloud_service_config['platform']
 
-        if 'ssh_private_key' in cloud_service_config:
-            cp.ssh_private_key = cloud_service_config['ssh_private_key']
-        else:
-            cp.ssh_private_key = open(cloud_service_config['key_path']).read()
+
+        if 'key_name' in cloud_service_config:
+            cp.key_name = cloud_service_config['key_name']
+
+        if cp.key_name:
+            if 'ssh_private_key' in cloud_service_config:
+                cp.ssh_private_key = cloud_service_config['ssh_private_key']
+            if 'key_path' in cloud_service_config:
+                cp.ssh_private_key = open(cloud_service_config['key_path']).read()
 
         if 'working_dir' in cloud_service_config:
             cp.working_dir = cloud_service_config['working_dir']

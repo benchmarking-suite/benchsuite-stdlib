@@ -18,11 +18,31 @@
 # CloudPerfect EU project (https://cloudperfect.eu/)
 
 import logging
+import random
+import string
+
+from libcloud.compute.base import KeyPair
 
 from benchsuite.core.model.exception import ProviderConfigurationException
 
 logger = logging.getLogger(__name__)
 
+
+
+
+def create_keypair(driver):
+    rand_name = ''.join(
+        [random.choice(string.ascii_lowercase + string.digits) for i in range(6)])
+    keypair_name = 'benchsuite_key-' + rand_name
+    keypair = driver.create_key_pair(keypair_name)
+    logger.info('New keypair created with name \'%s\'', keypair_name)
+    return keypair.name, keypair.private_key
+
+
+def destroy_keypair(driver, keypair_name):
+    keypair = KeyPair(keypair_name, None, None, None)
+    driver.delete_key_pair(keypair)
+    logger.info('Keypair \'%s\' destroyed', keypair.name)
 
 def get_openstack_network(driver, requested_network):
 
