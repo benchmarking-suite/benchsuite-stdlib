@@ -69,18 +69,22 @@ class BashCommandBenchmark(Benchmark):
 
     def __get_script(self, type, platform, interpolation_dict):
 
-        # try with the exact platform name (e.g. install_ubuntu_16.04)
-        if type + '_' + platform in self._props:
-            return textwrap.dedent(self.__replace_cp_properties(
-                self._props[type + '_' + platform], interpolation_dict)).strip()
-
-        # try with the first token of the platform (e.g. install_ubuntu) assuming
-        # the platform name is in the form <platformName>_<release>
+        # First try to search keys that have a combination of <type>_<platform_tokens>
+        # The platform is tokenized at "_" characters
+        # E.g. if the platform is 'ubuntu_14_04_r2' try with:
+        # - install_ubuntu_14_04_r2
+        # - install_ubuntu_14_04
+        # - install_ubuntu_14
+        # - install_ubuntu
+        # the first one (or if there are no _ in the platform string) will be
+        # the exact platform string
         t = platform.split('_')
-        if len(t) > 1:
-            if type + '_' + t[0] in self._props:
-                return textwrap.dedent(self.__replace_cp_properties(
-                    self._props[type + '_' + t[0]], interpolation_dict)).strip()
+
+        for i in range(len(t), 0, -1):
+            prop = self._props.get(type + '_' + '_'.join(t[0:i]))
+            if prop:
+                return textwrap.dedent(
+                    self.__replace_cp_properties(prop, interpolation_dict)).strip()
 
         # try without the platform (e.g. install)
         if type in self._props:
@@ -88,11 +92,7 @@ class BashCommandBenchmark(Benchmark):
                 self._props[type], interpolation_dict)).strip()
 
         return None
-        # default = getattr(sys.modules[__name__],
-        #                   'DEFAULT_' + type.upper() + '_' + platform.upper())
-        #
-        # return self.__replace_cp_properties(
-        #     default % self.__dict__, interpolation_dict)
+
 
     def __replace_cp_properties(self, string, interpolation_dict):
 
