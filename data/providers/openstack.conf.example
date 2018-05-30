@@ -19,17 +19,41 @@
 
 
 [provider]
+
+# the Benchmarking Suite class that implement the access to this provider
 class = benchsuite.stdlib.provider.libcloud.LibcloudComputeProvider
 
+# custom human-readable name for the provider. Used only for displaying purposes
 name = ote-testbed
+
+# Libcloud specific
+# the driver that Libcloud should use to access the provider
 driver = openstack
 
+# mandatory. Access credentials
 access_id = admin
 secret_key = xxxxx
+
+# mandatory for Openstack
+auth_url = http://cloudpcntlr:5000/
+
+
+
+# If not specified RegionOne is used
 region = RegionOne
 
-auth_url = http://cloudpcntlr:5000/
+# if not specified 2.0_password and 3.x_password will be attempted
 auth_version = 3.x_password
+
+# if not specified, a new security group "benchsuite_sg" will be created (if
+# not exist)
+security_group = mysg
+
+
+#optional. Automatically selected if multiple exist
+network = mynet
+
+
 tenant = admin
 
 benchsuite.openstack.no_floating_ip = true

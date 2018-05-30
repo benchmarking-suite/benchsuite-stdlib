@@ -31,8 +31,9 @@ logger = logging.getLogger(__name__)
 
 class BashCommandBenchmark(Benchmark):
 
-    def __init__(self, tool_id, workload_id, tool_name, workload_name, workload_description):
-        super().__init__(tool_id, workload_id, tool_name, workload_name, workload_description)
+    def __init__(self, tool_id, workload_id, tool_name, workload_name, workload_category, workload_subcategory, workload_description):
+        super().__init__(tool_id, workload_id, tool_name, workload_name,
+                         workload_category, workload_subcategory, workload_description)
         self._props = {}
 
     def get_env_request(self):
@@ -115,11 +116,19 @@ class BashCommandBenchmark(Benchmark):
         else:
             parser = None
 
+        if 'category' in config[workload]:
+            category_path =[i.strip() for i in
+                            config[workload]['category'].split('>')]
+        else:
+            category_path = None
+
         instance = BashCommandBenchmark(
             tool, workload,
-            config[workload]['tool_name'] if 'tool_name' in config[workload] else None,
-            config[workload]['workload_name'] if 'workload_name' in config[workload] else None,
-            config[workload]['workload_description'] if 'workload_description' in config[workload] else None
+            config[workload].get('tool_name'),
+            config[workload].get('workload_name'),
+            category_path,
+            config[workload].get('subcategory'),
+            config[workload].get('description')
         )
 
         for k, v in config.items(workload):
