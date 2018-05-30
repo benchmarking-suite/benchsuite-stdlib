@@ -26,9 +26,8 @@ from configparser import ConfigParser
 from libcloud.compute.providers import get_driver
 
 from benchsuite.core.model.exception import ProviderConfigurationException
-from benchsuite.stdlib.util.libcloud_helper import get_openstack_network, \
-    get_openstack_security_group, get_ec2_security_group, get_ec2_network, \
-    create_keypair, destroy_keypair
+from benchsuite.stdlib.util.libcloud_helper import get_helper, guess_platform, \
+    guess_username
 from benchsuite.stdlib.util.ssh import run_ssh_cmd
 from benchsuite.core.model.execution import ExecutionEnvironmentRequest, ExecutionEnvironment
 from benchsuite.core.model.provider import ServiceProvider
@@ -72,7 +71,16 @@ class LibcloudComputeProvider(ServiceProvider):
         self._driver = None
         self._newvm_network = None
         self._newvm_security_group = None
+        self._helper = None
+        self._sizes = None
+        self._images = None
 
+
+
+    def __get_helper(self):
+        if not self._helper:
+            self._helper = get_helper(self.libcloud_type)
+        return self._helper
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -81,6 +89,10 @@ class LibcloudComputeProvider(ServiceProvider):
         del state['_driver']
         del state['_newvm_network']
         del state['_newvm_security_group']
+        del state['_images']
+        del state['_sizes']
+        del state['_helper']
+
         return state
 
     def __setstate__(self, state):
@@ -89,6 +101,9 @@ class LibcloudComputeProvider(ServiceProvider):
         self._driver = None
         self._newvm_network = None
         self._newvm_security_group = None
+        self._images = None
+        self._sizes = None
+        self._helper = None
 
 
     def get_execution_environment(self, request: ExecutionEnvironmentRequest) -> ExecutionEnvironment:
@@ -108,7 +123,7 @@ class LibcloudComputeProvider(ServiceProvider):
             n.destroy()
 
         if self.keypair_generated:
-            destroy_keypair(driver, self.key_name)
+            self.__get_helper().destroy_keypair(driver, self.key_name)
 
     def __create_vm(self):
 
@@ -116,10 +131,14 @@ class LibcloudComputeProvider(ServiceProvider):
         driver = self.__get_libcloud_drv()
 
         #2. select the correct image and size
-        sizes = driver.list_sizes()
-        images = driver.list_images()
-        size = [s for s in sizes if s.id == self.size or s.name == self.size][0]
-        image = [i for i in images if i.id == self.image or i.name == self.image][0]
+        # cache values
+        if not self._sizes:
+            self._sizes = driver.list_sizes()
+        if not self._images:
+            self._images = driver.list_images()
+
+        size = [s for s in self._sizes if s.id == self.size or s.name == self.size][0]
+        image = [i for i in self._images if i.id == self.image or i.name == self.image][0]
 
         logger.debug('Creating new Instance with image %s and size %s', image.name, size.name)
 
@@ -131,13 +150,19 @@ class LibcloudComputeProvider(ServiceProvider):
         name = 'benchsuite-'+rand_name
 
         if not self.key_name or not self.ssh_private_key:
-            self.key_name, self.ssh_private_key = create_keypair(driver)
+            self.key_name, self.ssh_private_key = self.__get_helper().create_keypair(driver)
             self.keypair_generated = True
 
         extra_args = self.extra_params.copy()
         extra_args.update(self.__get_newvm_network_param() or {})
         extra_args.update(self.__get_newvm_security_group_param() or {})
 
+        logger.debug('Creating node with:')
+        logger.debug(' - name: %s', str(name))
+        logger.debug(' - image: %s', str(image.name))
+        logger.debug(' - size: %s', str(size.name))
+        logger.debug(' - keyname: %s', str(self.key_name))
+        logger.debug(' - extra_args: %s', extra_args)
         node = driver.create_node(name=name, image=image, size=size, ex_keyname=self.key_name, **extra_args)
         driver.wait_until_running([node], wait_period=10, ssh_interface='private_ips')
 
@@ -159,7 +184,20 @@ class LibcloudComputeProvider(ServiceProvider):
         else:
             vm_id = node.private_ips[0]
 
-        vm = VM(node.id, vm_id, self.vm_user, self.platform, working_dir=self.working_dir, priv_key=self.ssh_private_key)
+
+        platform = self.platform
+        if not platform:
+            platform = guess_platform(image)
+            logger.warning('"platform" not specified. Using "%s"', platform)
+
+        username = self.vm_user
+        if not username:
+            username = guess_username(platform)
+            logger.warning('"username" not specified. Using "%s"', username)
+
+        vm = VM(node.id, vm_id, username, platform,
+                working_dir=self.working_dir,
+                priv_key=self.ssh_private_key)
 
         vm.set_sizes(
             # OpenStack driver put the number of cpu in the vcpus attribute, the Amazon driver put it in extra['cpu']
@@ -245,37 +283,26 @@ class LibcloudComputeProvider(ServiceProvider):
 
     def __get_libcloud_drv(self):
 
-        #TODO add auth_url and auth_version in openstack
         if not self._driver:  # caches the driver in the self._driver variable
-            drv = get_driver(self.libcloud_type)
-            self._driver = drv(self.access_id, self.secret_key, **self.extra_params)
+            self._driver = self.__get_helper().get_driver(self.access_id, self.secret_key, self.extra_params)
+
         return self._driver
 
 
     def __get_newvm_network_param(self):
 
         if not self._newvm_network:
-            if 'network' in self.extra_params:
-                if self.libcloud_type == 'openstack':
-                    self._newvm_network = get_openstack_network(
-                        self.__get_libcloud_drv(), self.extra_params['network'])
-                if self.libcloud_type == 'ec2':
-                    self._newvm_network = get_ec2_network(
-                        self.__get_libcloud_drv(), self.extra_params['network'])
+            self._newvm_network = self.__get_helper().get_network(
+                    self.__get_libcloud_drv(), self.extra_params.get('network'))
 
         return self._newvm_network
-
 
     def __get_newvm_security_group_param(self):
 
         if not self._newvm_security_group:
-            if 'security_group' in self.extra_params:
-                if self.libcloud_type == 'openstack':
-                    self._newvm_security_group = get_openstack_security_group(
-                        self.__get_libcloud_drv(), self.extra_params['security_group'])
-                if self.libcloud_type == 'ec2':
-                    self._newvm_security_group = get_ec2_security_group(
-                        self.__get_libcloud_drv(), self.extra_params['security_group'])
+                self._newvm_security_group = self.__get_helper().get_security_group(
+                    self.__get_libcloud_drv(),
+                    self.extra_params.get('security_group'))
 
         return self._newvm_security_group
 
@@ -321,8 +348,18 @@ class LibcloudComputeProvider(ServiceProvider):
         return extra_params
 
 
+    def getdriver(self):
+        return self.__get_libcloud_drv()
+
     @staticmethod
     def load_from_config_file(config: ConfigParser, service_type: str) -> ServiceProvider:
+
+
+        assert 'provider' in config, '"provider" section is mandatory in the configuration'
+        assert 'name' in config['provider'], '"name" parameter is mandatory in the configuration'
+        assert 'driver' in config['provider'], '"driver" parameter is mandatory in the configuration'
+        assert 'access_id' in config['provider'], '"access_id" parameter is mandatory in the configuration'
+        assert 'secret_key' in config['provider'], '"secret_key" parameter is mandatory in the configuration'
 
         cp = LibcloudComputeProvider(
             config['provider']['name'],
@@ -334,7 +371,6 @@ class LibcloudComputeProvider(ServiceProvider):
 
         cp.extra_params = LibcloudComputeProvider.__load_extra_params(config)
 
-        logger.debug('')
 
         if service_type not in config:
             raise ProviderConfigurationException(
@@ -344,9 +380,9 @@ class LibcloudComputeProvider(ServiceProvider):
 
         cp.image = cloud_service_config['image']
         cp.size = cloud_service_config['size']
-        cp.vm_user = cloud_service_config['vm_user']
-        cp.working_dir = '/home/' + cloud_service_config['vm_user'] # default value
-        cp.platform = cloud_service_config['platform']
+        cp.vm_user = cloud_service_config.get('vm_user')
+        cp.working_dir = '/tmp' if not cp.vm_user else '/home/' + cp.vm_user
+        cp.platform = cloud_service_config.get('platform')
 
 
         if 'key_name' in cloud_service_config:
