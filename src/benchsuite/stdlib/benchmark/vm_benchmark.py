@@ -122,12 +122,16 @@ class BashCommandBenchmark(Benchmark):
         else:
             categories = None
 
+        description = config[workload].get('workload_description')
+        if not description:
+            description = config[workload].get('description')
+
         instance = BashCommandBenchmark(
             tool, workload,
             config[workload].get('tool_name'),
             config[workload].get('workload_name'),
             categories,
-            config[workload].get('description')
+            description
         )
 
         for k, v in config.items(workload):
