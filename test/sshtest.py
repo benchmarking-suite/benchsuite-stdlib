@@ -17,24 +17,15 @@
 # Developed in the ARTIST EU project (www.artist-project.eu) and in the
 # CloudPerfect EU project (https://cloudperfect.eu/)
 import logging
-import os
 
-from benchsuite.core.controller import BenchmarkingController
-from benchsuite.stdlib.execution.vm_environment import VM, VMSetExecutionEnvironment
-from benchsuite.stdlib.util.libcloud_helper import guess_platform
+import sys
 
-class Image:
-    pass
+from benchsuite.stdlib.execution.sshexecutor import RemoteSSHExecutor
+from benchsuite.stdlib.execution.vm_environment import VM
 
 if __name__ == '__main__':
 
-   image = Image()
-   image.name = 'ubuntu-1412server'
-   #image.name = 'base_centos_7'
-
-   print(guess_platform(image))
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
-
-
-
+    print(RemoteSSHExecutor.convert_to_h_m_s(102))
