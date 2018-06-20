@@ -125,3 +125,36 @@ class FileBenchResultParser(ExecutionResultParser):
             'cputime': {'value': float(speed), 'unit': 'us cpu/s'},
             'latency_avg': {'value': float(latency), 'unit': 'us'}
         }
+
+
+class DaCapoResultParser(ExecutionResultParser):
+
+    def get_metrics(self, stdout, stderr):
+        """
+        DaCapo benchmark works executing a variable number of warmup iterations
+        until the completion time converge (a variance <= 3% in the latest 3
+        iterations).
+
+        Two metrics are collected:
+        1) "timed_duration": the duration of the latest run
+        2) "warmup_iters": the number of iterations required to converge
+
+        :param stdout:
+        :param stderr:
+        :return:
+        """
+
+        lines = stderr.split('\n')
+
+        # timed duration is the only the one in the "PASSED" line
+        passed = [l for l in lines if 'PASSED' in l][0]
+        # time is the only number in the line
+        timed_duration = [n for n in passed.split() if n.isdigit()][0]
+
+        # there is a line with "completed warmup" for each warmup executed
+        warmup_iters = len([l for l in lines if 'completed warmup' in l])
+
+        return {
+            'timed_duration': {'value': int(timed_duration), 'unit': 'ms'},
+            'warmup_iters': {'value': int(warmup_iters), 'unit': 'num'}
+        }
