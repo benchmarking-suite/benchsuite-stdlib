@@ -16,7 +16,10 @@
 #
 # Developed in the ARTIST EU project (www.artist-project.eu) and in the
 # CloudPerfect EU project (https://cloudperfect.eu/)
+
+import re
 import logging
+
 from io import StringIO
 
 import paramiko
@@ -89,8 +92,8 @@ def run_ssh_cmd(vm, cmd, async=False, needs_pty=False):
 
         exit_status = stdout.channel.recv_exit_status()
 
-        out = stdout.read().decode("utf-8")
-        err = stderr.read().decode("utf-8")
+        out = sanitize_output(stdout.read().decode("utf-8"))
+        err = sanitize_output(stderr.read().decode("utf-8"))
 
         return (exit_status, out, err)
 
@@ -104,3 +107,7 @@ def run_ssh_cmd(vm, cmd, async=False, needs_pty=False):
 
 
 
+def sanitize_output(strin):
+    # remove ansi escape sequences
+    ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
+    return ansi_escape.sub('', strin)
