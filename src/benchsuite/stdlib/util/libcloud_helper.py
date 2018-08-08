@@ -241,6 +241,11 @@ def guess_platform(image):
             if m:
                 return 'ubuntu_' + m.group(1)
             else:
+                if re.search(r'xenial', name, re.IGNORECASE):
+                    return 'ubuntu_16_04'
+                if re.search(r'trusty', name, re.IGNORECASE):
+                    return 'ubuntu_14_04'
+
                 return 'ubuntu'
 
     elif re.search(r'centos', name, re.IGNORECASE):
