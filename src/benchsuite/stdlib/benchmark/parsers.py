@@ -16,6 +16,7 @@
 #
 # Developed in the ARTIST EU project (www.artist-project.eu) and in the
 # CloudPerfect EU project (https://cloudperfect.eu/)
+import json
 import logging
 
 import re
@@ -24,6 +25,62 @@ from benchsuite.core.model.execution import ExecutionResultParser
 
 
 logger = logging.getLogger(__name__)
+
+
+
+class WebFrameworksBenchmarksParser(ExecutionResultParser):
+
+    def get_metrics(self, stdout, stderr):
+
+        # the tool puts the results in the results.json file. This file is
+        # printed in the stdout and delimited by the
+        # "@@@ results.json content @@@" and "@@@@@@" lines. We isolate the
+        # content of the file and parse it in a json object
+        lines = stdout.split('\n')
+        start = lines.index('@@@ results.json content @@@') + 2
+        end = lines.index('@@@@@@')
+        results_str = '\n'.join(lines[start:end])
+        results = json.loads(results_str)
+
+        # find the framework and the test executed
+        framework = results['frameworks'][0]
+        test = list(results['verify'][framework].keys())[0]
+
+        data = results['rawData'][test][framework]
+        iterations = results['concurrencyLevels']
+
+        if test == 'update' or test == 'query':
+            iterations = results['queryIntervals']
+
+        if test == 'plaintext':
+            iterations = results['pipelineConcurrencyLevels']
+
+        metrics = {}
+        c = 0
+        for res in data:
+            iter = iterations[c]
+            metrics.update({'totalRequests_{0}'.format(iter): {'value': res['totalRequests'], 'unit':'num'}})
+            if 'timeout' in res:
+                metrics.update({'timeout_{0}'.format(iter): {'value': res['timeout'], 'unit':'num'}})
+            metrics.update({'duration_{0}'.format(iter): {'value': res['endTime'] - res['startTime'], 'unit':'s'}})
+            metrics.update({'latencyAvg_{0}'.format(iter): self.__split_value_unit(res['latencyAvg'])})
+            metrics.update({'latencyMax_{0}'.format(iter): self.__split_value_unit(res['latencyMax'])})
+            metrics.update({'latencyStdev_{0}'.format(iter): self.__split_value_unit(res['latencyStdev'])})
+            c+=1
+
+        return metrics
+
+
+    def __split_value_unit(self, s):
+        '''
+        values are stored in results.json as string that contain both the value and the unit
+        (e.g. "10.23ms", "4.2s", "3.8us")
+        :param s: the result string
+        :return:
+        '''
+        val = re.findall(r"\d*\.\d+|\d+", s)[0]
+        unit = s.replace(val,'').strip()
+        return {'value': val, 'unit': unit}
 
 
 class YCSBResultParser(ExecutionResultParser):
