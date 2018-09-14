@@ -134,11 +134,23 @@ class LibcloudComputeProvider(ServiceProvider):
         # cache values
         if not self._sizes:
             self._sizes = driver.list_sizes()
+            logger.debug('Loaded {0} sizes'.format(len(self._sizes)))
         if not self._images:
             self._images = driver.list_images()
+            logger.debug('Loaded {0} images'.format(len(self._images)))
 
-        size = [s for s in self._sizes if s.id == self.size or s.name == self.size][0]
-        image = [i for i in self._images if i.id == self.image or i.name == self.image][0]
+        try:
+            size = [s for s in self._sizes if s.id == self.size or s.name == self.size][0]
+        except IndexError:
+            logger.debug('Requested size %s not available. Aborting', self.size)
+            raise ProviderConfigurationException('Size {0} not available'.format(self.size))
+
+        try:
+            image = [i for i in self._images if i.id == self.image or i.name == self.image][0]
+        except IndexError:
+            logger.debug('Requested image %s not available. Aborting', self.image)
+            raise ProviderConfigurationException('Image {0} not available'.format(self.image))
+
 
         logger.debug('Creating new Instance with image %s and size %s', image.name, size.name)
 
