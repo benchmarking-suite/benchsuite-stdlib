@@ -90,10 +90,10 @@ def run_ssh_cmd(vm, cmd, async=False, needs_pty=False):
         if async:
             return (0, '', '')
 
-        exit_status = stdout.channel.recv_exit_status()
-
         out = sanitize_output(stdout.read().decode("utf-8"))
         err = sanitize_output(stderr.read().decode("utf-8"))
+
+        exit_status = stdout.channel.recv_exit_status()
 
         return (exit_status, out, err)
 
