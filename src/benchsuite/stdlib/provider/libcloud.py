@@ -28,7 +28,7 @@ from libcloud.compute.providers import get_driver
 from benchsuite.core.model.exception import ProviderConfigurationException
 from benchsuite.stdlib.util.libcloud_helper import get_helper, guess_platform, \
     guess_username
-from benchsuite.stdlib.util.ssh import run_ssh_cmd
+from benchsuite.stdlib.util.ssh import run_ssh_cmd_single
 from benchsuite.core.model.execution import ExecutionEnvironmentRequest, ExecutionEnvironment
 from benchsuite.core.model.provider import ServiceProvider
 from benchsuite.stdlib.execution.vm_environment import VMSetExecutionEnvironment, VM
@@ -271,7 +271,7 @@ class LibcloudComputeProvider(ServiceProvider):
     def __execute_post_create(self, vm, retries):
         logger.info('Trying to connect to the new instance (max_retries={0})'.format(retries))
         try:
-            run_ssh_cmd(vm, self.post_create_script, needs_pty=True)
+            run_ssh_cmd_single(vm, self.post_create_script, needs_pty=True)
         except Exception as ex:
             retries -= 1
 
