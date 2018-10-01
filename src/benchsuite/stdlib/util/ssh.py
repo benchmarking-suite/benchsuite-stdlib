@@ -55,11 +55,26 @@ def ssh_transfer_output(vm, name, dest):
         ssh.close()
 
 
+def run_ssh_cmd(vm, cmd, async=False, needs_pty=False, retry_times=3):
 
-def run_ssh_cmd(vm, cmd, async=False, needs_pty=False):
+    retry_counter = retry_times
+
+    while retry_counter > 0:
+        retry_counter -= 1
+
+        try:
+            return run_ssh_cmd_single(vm, cmd, async=async, needs_pty=needs_pty)
+
+        except Exception as ex:
+            if retry_counter > 0:
+                logger.warning('An exception occurred in the execution of the ssh command: {0}. Retrying for other {1} times'.format(str(ex), retry_counter))
+            else:
+                logger.warning('An exception occurred in the execution of the ssh command: {0}. '
+                               'Not retrying because max retry times ({1}) exceeded. Raising the exeception'.format(str(ex), retry_times))
+                raise ex
+
+def run_ssh_cmd_single(vm, cmd, async=False, needs_pty=False):
     '''
-    
-    
     sometime /etc/sudoers is configured to require a tty to execute a command with sudo. In this case, set needs_pty to
     True. But if needs_pty is True, you cannot run a command asyncrounously (check if this is really true)
     
