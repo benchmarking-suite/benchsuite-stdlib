@@ -23,8 +23,6 @@ import string
 import time
 from configparser import ConfigParser
 
-from libcloud.compute.providers import get_driver
-
 from benchsuite.core.model.exception import ProviderConfigurationException
 from benchsuite.stdlib.util.libcloud_helper import get_helper, guess_platform, \
     guess_username
@@ -155,10 +153,9 @@ class LibcloudComputeProvider(ServiceProvider):
         logger.debug('Creating new Instance with image %s and size %s', image.name, size.name)
 
 
-        #3. create the node and wait until RUNNING
+        #3. choose a random name for the vm
         rand_name = ''.join(
             [random.choice(string.ascii_lowercase + string.digits) for i in range(6)])
-
         name = 'benchsuite-'+rand_name
 
         if not self.key_name or not self.ssh_private_key:
@@ -176,51 +173,54 @@ class LibcloudComputeProvider(ServiceProvider):
         logger.debug(' - keyname: %s', str(self.key_name))
         logger.debug(' - extra_args: %s', extra_args)
         node = driver.create_node(name=name, image=image, size=size, ex_keyname=self.key_name, **extra_args)
-        driver.wait_until_running([node], wait_period=10, ssh_interface='private_ips')
 
-        #4. refresh the info of the node
-        node = [i for i in driver.list_nodes() if i.uuid == node.uuid][0]
+        # any exception occurring from this point, will delete the created not,
+        # to avoid to leave un-configured nodes running
+        try :
 
-        logger.debug('New Instance created with node_id=%s', node.id)
+            driver.wait_until_running([node], wait_period=10, ssh_interface='private_ips')
+
+            #4. refresh the info of the node
+            node = [i for i in driver.list_nodes() if i.uuid == node.uuid][0]
+
+            logger.debug('New Instance created with node_id=%s', node.id)
 
 
-        # if the node has not public ips, try to assign one
-        if not node.public_ips:
-            ip = self.__assign_floating_ip(driver, node)
-
-            if ip:
+            # if the node has not public ips, try to assign one
+            if not node.public_ips:
+                ip = self.__assign_floating_ip(driver, node)
                 node.public_ips = [ip]
 
-        if node.public_ips:
-            vm_id = node.public_ips[0]
-        else:
-            vm_id = node.private_ips[0]
+
+            if node.public_ips:
+                vm_id = node.public_ips[0]
+            else:
+                vm_id = node.private_ips[0]
 
 
-        platform = self.platform
-        if not platform:
-            platform = guess_platform(image)
-            logger.warning('"platform" not specified. Using "%s"', platform)
+            platform = self.platform
+            if not platform:
+                platform = guess_platform(image)
+                logger.warning('"platform" not specified. Using "%s"', platform)
 
-        username = self.vm_user
-        if not username:
-            username = guess_username(platform)
-            logger.warning('"username" not specified. Using "%s"', username)
+            username = self.vm_user
+            if not username:
+                username = guess_username(platform)
+                logger.warning('"username" not specified. Using "%s"', username)
 
-        vm = VM(node.id, vm_id, username, platform,
-                working_dir=self.working_dir,
-                priv_key=self.ssh_private_key)
+            vm = VM(node.id, vm_id, username, platform,
+                    working_dir=self.working_dir,
+                    priv_key=self.ssh_private_key)
 
-        vm.set_sizes(
-            # OpenStack driver put the number of cpu in the vcpus attribute, the Amazon driver put it in extra['cpu']
-            size.vcpus if hasattr(size, 'vcpus') else (size.extra['cpu'] if 'cpu' in size.extra else 0),
-            size.ram,
-            size.disk)
+            vm.set_sizes(
+                # OpenStack driver put the number of cpu in the vcpus attribute, the Amazon driver put it in extra['cpu']
+                size.vcpus if hasattr(size, 'vcpus') else (size.extra['cpu'] if 'cpu' in size.extra else 0),
+                size.ram,
+                size.disk)
 
 
-        # exexute post-creation scripts. This is also used to verify that the VM is accessible
-        # through ssh. If the execution fails, we destroy the VM
-        try :
+            # exexute post-creation scripts. This is also used to verify that the VM is accessible
+            # through ssh. If the execution fails, we destroy the VM
             self.__execute_post_create(vm, int(self.extra_params.get('new_vm.connection_retry_times', 20)))
             logger.info('New VM %s created and initialized', vm)
 
@@ -228,7 +228,6 @@ class LibcloudComputeProvider(ServiceProvider):
             logger.error('{0} occurred during VM initialization: {1}'.format(
                 ex.__class__.__name__, str(ex)))
             logger.error('Destroying VM due to the initialization errors')
-
             # destroying the node created
             node.destroy()
             raise ex
