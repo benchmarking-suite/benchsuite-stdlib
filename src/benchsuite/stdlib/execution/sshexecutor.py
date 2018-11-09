@@ -86,8 +86,11 @@ class RemoteSSHExecutor(TestExecutor):
 
     def cleanup(self):
         vm0 = self.env.vms[0]
-        cmd = self.test_scripts.get_remove_script(vm0.platform)
-        self.__execute_cmd(vm0, cmd, 'cleanup')
+        cmd = self.test.get_cleanup_script(vm0.platform)
+        if cmd:
+            self.__execute_cmd(vm0, cmd, 'cleanup')
+        else:
+            logger.warning('No cleanup commands to execute')
 
     @staticmethod
     def __get_cmd_output(vm, cmd):

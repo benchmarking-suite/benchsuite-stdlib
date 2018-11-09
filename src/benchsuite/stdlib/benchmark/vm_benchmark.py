@@ -47,6 +47,10 @@ class BashCommandBenchmark(Benchmark):
         executor = RemoteSSHExecutor(execution)
         executor.run(async=async)
 
+    def cleanup(self, execution):
+        executor = RemoteSSHExecutor(execution)
+        executor.cleanup()
+
     def get_result(self, execution):
         executor = RemoteSSHExecutor(execution)
         return executor.collect_results()
@@ -64,8 +68,8 @@ class BashCommandBenchmark(Benchmark):
     def get_execute_script(self, platform, interpolation_dict = {}):
         return self.__get_script('execute', platform, interpolation_dict)
 
-    def get_remove_script(self, platform, interpolation_dict = {}):
-        return self.__get_script('remove', platform, interpolation_dict)
+    def get_cleanup_script(self, platform, interpolation_dict = {}):
+        return self.__get_script('cleanup', platform, interpolation_dict)
 
     def __get_script(self, type, platform, interpolation_dict):
 
