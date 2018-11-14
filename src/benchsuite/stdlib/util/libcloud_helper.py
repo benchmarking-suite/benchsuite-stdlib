@@ -192,7 +192,7 @@ class EC2Helper(LibCloudHelper):
                     BENCHSUITE_SECURITY_GROUP_NAME,
                     22, 22, '0.0.0.0/0',
                     protocol='tcp')
-                return {'ex_security_group_ids': sg.id}
+                return {'ex_security_group_ids': sg['group_id']}
             else:
                 raise ProviderConfigurationException(
                     'The requested security group "{0}" does not exist'.format(
