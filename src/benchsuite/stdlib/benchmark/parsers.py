@@ -122,6 +122,7 @@ class YCSBResultParser(ExecutionResultParser):
         out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'insert'))
         out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'read'))
         out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'update'))
+        out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'scan'))
 
 
         return out
