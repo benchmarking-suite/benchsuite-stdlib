@@ -99,7 +99,7 @@ def run_ssh_cmd_single(vm, cmd, async=False, needs_pty=False):
         else:
             ssh.connect(hostname=vm.ip, port=22, username=vm.username, password=vm.password)
 
-        logger.debug('Executing command on the remote host: "' + cmd+'"')
+        logger.debug('Executing command on the remote host {0}: {1}'.format(vm.benchsuite_name, cmd))
         stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=needs_pty)
 
         if async:
