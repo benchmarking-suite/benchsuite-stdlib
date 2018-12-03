@@ -221,3 +221,66 @@ class DaCapoResultParser(ExecutionResultParser):
             'timed_duration': {'value': int(timed_duration), 'unit': 'ms'},
             'warmup_iters': {'value': int(warmup_iters), 'unit': 'num'}
         }
+
+
+
+class IPerfResultParser(ExecutionResultParser):
+
+    def get_metrics(self, tool, workload, logs):
+
+        stdout = [e for e in logs if e['vm'] == 'default'][0]['stdout']
+
+
+        if 'udp' in workload:
+            return self.__get_udp_metrics(stdout)
+        else:
+            return self.__get_tcp_metrics(stdout)
+
+    def __get_tcp_metrics(self, stdout):
+
+        res = {}
+        lines = stdout.split("\n")
+        data = [l.split(',') for l in lines if len(l.split(',')) == 9]
+
+        c = 1
+        for i in range(0, len(data) -1) if len(data) > 1 else range(0,1):
+            res['transferred_'+str(c)] = {'value': int(data[i][7]), 'unit': 'bytes'}
+            res['bandwidth_'+str(c)] = {'value': int(data[i][8]), 'unit': 'bit/s'}
+            c+=1
+
+        if len(data) > 1:
+            res['transferred_sum'] =  {'value': int(data[c-1][7]), 'unit': 'bytes'}
+            res['bandwidth_sum'] =    {'value': int(data[c-1][8]), 'unit': 'bit/s'}
+
+        return res
+
+    def __get_udp_metrics(self, stdout):
+
+        res = {}
+        lines = stdout.split("\n")
+        data = [l.split(',') for l in lines if len(l.split(',')) == 14]
+
+        c = 1
+        for i in data:
+            res['transferred_'+str(c)] = {'value': int(i[7]), 'unit': 'bytes'}
+            res['bandwidth_'+str(c)] =    {'value': int(i[8]), 'unit': 'bit/s'}
+            res['total_datagrams_'+str(c)] = {'value': int(i[11]), 'unit': 'num'}
+            res['lost_datagrams'+str(c)] = {'value': int(i[10]), 'unit': 'num'}
+            res['jitter_'+str(c)] = {'value': i[9], 'unit': 'ms'}
+            res['outoforder_'+str(c)] = {'value': int(i[13]), 'unit': 'num'}
+            c+=1
+
+        tavg = sum([int(x[7]) for x in data]) / len(data)
+        bavg = sum([int(x[8]) for x in data]) / len(data)
+        davg = sum([int(x[11]) for x in data]) / len(data)
+        lavg = sum([int(x[10]) for x in data]) / len(data)
+        javg = sum([float(x[9]) for x in data]) / len(data)
+        oavg = sum([int(x[13]) for x in data]) / len(data)
+        res['transferred_avg'] = {'value': tavg, 'unit': 'bytes'}
+        res['bandwidth_avg'] =  {'value': bavg, 'unit': 'bit/s'}
+        res['total_datagrams_avg'] =  {'value': davg, 'unit': 'num'}
+        res['lost_datagrams_avg'] =  {'value': lavg, 'unit': 'num'}
+        res['jitter_avg'] =  {'value': javg, 'unit': 'ms'}
+        res['outoforder_avg'] =  {'value': oavg, 'unit': 'num'}
+
+        return res

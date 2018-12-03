@@ -133,6 +133,8 @@ class OpenstackHelper(LibCloudHelper):
                     BENCHSUITE_SECURITY_GROUP_NAME,
                     BENCHSUITE_SECURITY_GROUP_DESCRIPTION)
                 driver.ex_create_security_group_rule(sg, 'tcp', 22, 22)
+                driver.ex_create_security_group_rule(sg, 'tcp', 5001, 5001)
+                driver.ex_create_security_group_rule(sg, 'udp', 5002, 5002)
                 return {'ex_security_groups': [sg]}
             else:
                 raise ProviderConfigurationException(
@@ -192,6 +194,15 @@ class EC2Helper(LibCloudHelper):
                     BENCHSUITE_SECURITY_GROUP_NAME,
                     22, 22, '0.0.0.0/0',
                     protocol='tcp')
+                driver.ex_authorize_security_group(
+                    BENCHSUITE_SECURITY_GROUP_NAME,
+                    5001, 5001, '0.0.0.0/0',
+                    protocol='tcp')
+                driver.ex_authorize_security_group(
+                    BENCHSUITE_SECURITY_GROUP_NAME,
+                    5002, 5002, '0.0.0.0/0',
+                    protocol='udp')
+
                 return {'ex_security_group_ids': sg['group_id']}
             else:
                 raise ProviderConfigurationException(
