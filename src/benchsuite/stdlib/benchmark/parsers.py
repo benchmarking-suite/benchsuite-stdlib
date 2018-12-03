@@ -30,7 +30,9 @@ logger = logging.getLogger(__name__)
 
 class WebFrameworksBenchmarksParser(ExecutionResultParser):
 
-    def get_metrics(self, stdout, stderr):
+    def get_metrics(self, tool, workload, logs):
+
+        stdout = logs[0]['stdout']
 
         # the tool puts the results in the results.json file. This file is
         # printed in the stdout and delimited by the
@@ -85,7 +87,7 @@ class WebFrameworksBenchmarksParser(ExecutionResultParser):
 
 class YCSBResultParser(ExecutionResultParser):
 
-    def get_metrics(self, stdout, stderr):
+    def get_metrics(self, tool, workload, logs):
 
         #
         # Metrics in the YCSB outputs appears in this format:
@@ -94,6 +96,7 @@ class YCSBResultParser(ExecutionResultParser):
         # [INSERT], MaxLatency(us), 14423.0
         # [SCAN], Operations, 4748.0
 
+        stdout = logs[0]['stdout']
 
         lines = stdout.split('\n')
 
@@ -144,7 +147,7 @@ class YCSBResultParser(ExecutionResultParser):
 
 class FileBenchResultParser(ExecutionResultParser):
 
-    def get_metrics(self, stdout, stderr):
+    def get_metrics(self, tool, workload, logs):
         '''
         see https://github.com/filebench/filebench/wiki/Collected-metrics
         :param stdout: 
@@ -152,6 +155,7 @@ class FileBenchResultParser(ExecutionResultParser):
         :return: 
         '''
 
+        stdout = logs[0]['stdout']
         # isolate the line with the IO Summary
         lines = stdout.split('\n')
         summary_line = [l for l in lines if 'IO Summary' in l][0]
@@ -187,7 +191,7 @@ class FileBenchResultParser(ExecutionResultParser):
 
 class DaCapoResultParser(ExecutionResultParser):
 
-    def get_metrics(self, stdout, stderr):
+    def get_metrics(self, tool, workload, logs):
         """
         DaCapo benchmark works executing a variable number of warmup iterations
         until the completion time converge (a variance <= 3% in the latest 3
@@ -202,6 +206,7 @@ class DaCapoResultParser(ExecutionResultParser):
         :return:
         """
 
+        stderr = logs[0]['stderr']
         lines = stderr.split('\n')
 
         # timed duration is the only the one in the "PASSED" line
