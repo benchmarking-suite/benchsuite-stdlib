@@ -24,7 +24,7 @@ import datetime
 
 from benchsuite.stdlib.util.ssh import run_ssh_cmd
 from benchsuite.core.model.common import TestExecutor
-from benchsuite.core.model.exception import BashCommandExecutionFailedException, NoExecuteCommandsFound
+from benchsuite.core.model.exception import BashCommandExecutionFailedException
 from benchsuite.stdlib.util.timeutils import convert_to_h_m_s
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,7 @@ class RemoteSSHExecutor(TestExecutor):
         self.id = execution.id
         self.test = execution.test
         self.env = execution.exec_env
+        self.execution = execution
 
     def _get_filename(self, phase, type):
         extensions = {
@@ -50,47 +51,72 @@ class RemoteSSHExecutor(TestExecutor):
         return '/tmp/{0}-{1}.{2}'.format(phase, self.id, extensions[type])
 
 
-    def install(self):
-        vm0 = self.env.vms[0]
-        cmd = self.test.get_install_script(vm0.platform)
-        if cmd:
-            self.__execute_cmd(vm0, cmd, 'install')
-        else:
-            logger.warning('No install commands to execute')
+    def __build_props_dict(self):
+        res = {}
 
-        cmd = self.test.get_postinstall_script(vm0.platform)
-        if cmd:
-            self.__execute_cmd(vm0, cmd, 'post-install')
-        else:
-            logger.warning('No Post-install commands to execute')
+        # add session properties
+        res.update(self.execution.session.props)
+
+        # add all VM properties
+        for vm in self.env.vms.values():
+            res.update({'{0}.{1}'.format(vm.benchsuite_name, k):v for k,v in vm.__dict__.items()})
+            res.pop('{0}.priv_key'.format(vm.benchsuite_name))
+
+        return res
+
+    def install(self):
+        for n in self.test._props['vm_list']:
+            vm = self.env.vms[n]
+            cmd = self.test.get_install_script(vm.benchsuite_name, vm.platform, interpolation_dict=self.__build_props_dict())
+            if cmd:
+                self.__execute_cmd(vm, cmd, 'install')
+            else:
+                logger.warning('No install commands to execute for vm ' + vm.benchsuite_name)
+
+        for n in self.test._props['vm_list']:
+            vm = self.env.vms[n]
+            cmd = self.test.get_postinstall_script(vm.benchsuite_name, vm.platform, interpolation_dict=self.__build_props_dict())
+            if cmd:
+                self.__execute_cmd(vm, cmd, 'post-install')
+            else:
+                logger.warning('No Post-install commands to execute for vm ' + vm.benchsuite_name)
 
     def run(self, async=False):
-        vm0 = self.env.vms[0]
-        cmd = self.test.get_execute_script(vm0.platform)
-        if cmd:
-            self.__execute_cmd(vm0, cmd, 'run', async=async)
-        else:
-            logger.error('No execute commands found for this platform ({0})'.format(vm0.platform))
-            raise NoExecuteCommandsFound(logger.error('No execute commands found for platform {0}'.format(vm0.platform)))
+        for n in self.test._props['vm_list']:
+            vm = self.env.vms[n]
+            cmd = self.test.get_execute_script(vm.benchsuite_name, vm.platform, interpolation_dict=self.__build_props_dict())
+            if cmd:
+                self.__execute_cmd(vm, cmd, 'run', async=async)
+            else:
+                logger.warning('No execute commands found for this platform ({0})'.format(vm.platform))
+                #raise NoExecuteCommandsFound(logger.error('No execute commands found for platform {0}'.format(vm.platform)))
 
     def collect_results(self):
-        vm0 = self.env.vms[0]
-        out = self.__get_cmd_output(vm0, 'cat ' + self._get_filename('run', 'cmd_stdout'))
-        err = self.__get_cmd_output(vm0, 'cat ' + self._get_filename('run', 'cmd_stderr'))
+        res = []
+        for n in self.test._props['vm_list']:
+            vm = self.env.vms[n]
+            out = self.__get_cmd_output(vm, 'cat ' + self._get_filename('run', 'cmd_stdout'))
+            err = self.__get_cmd_output(vm, 'cat ' + self._get_filename('run', 'cmd_stderr'))
+            res.append({'vm': vm.benchsuite_name, 'stdout': out, 'stderr': err})
 
-        return out, err
+        return res
 
-    def get_runtime(self, phase):
-        vm0 = self.env.vms[0]
-        return int(self.__get_cmd_output(vm0, 'cat ' + self._get_filename(phase, 'cmd_time')))
+    def get_runtime(self, phase, vm = None):
+        if not vm:
+            if 'default' in self.env.vms:
+                vm = self.env.vms['default']
+            else:
+                vm = self.env.vms[self.test._props['vm_list'][-1]]
+        return int(self.__get_cmd_output(vm, 'cat ' + self._get_filename(phase, 'cmd_time')))
 
     def cleanup(self):
-        vm0 = self.env.vms[0]
-        cmd = self.test.get_cleanup_script(vm0.platform)
-        if cmd:
-            self.__execute_cmd(vm0, cmd, 'cleanup')
-        else:
-            logger.warning('No cleanup commands to execute')
+        for n in self.test._props['vm_list']:
+            vm = self.env.vms[n]
+            cmd = self.test.get_cleanup_script(vm.benchsuite_name, vm.platform, interpolation_dict=self.__build_props_dict())
+            if cmd:
+                self.__execute_cmd(vm, cmd, 'cleanup')
+            else:
+                logger.warning('No cleanup commands to execute')
 
     @staticmethod
     def __get_cmd_output(vm, cmd):
@@ -113,9 +139,9 @@ class RemoteSSHExecutor(TestExecutor):
         :return: the exit code or 0 if async == True
         '''
 
-        logger.info('Executing commands:\n******************\n{0}\n******************'.format(cmd))
-        remote_script = self.__generate_remote_script(vm, cmd, phase)
+        logger.info('Executing "{0}" commands on vm "{1}"'.format(phase, vm.benchsuite_name))
 
+        remote_script = self.__generate_remote_script(vm, cmd, phase)
 
         # if poll_for_termination, we just launch the command and then check
         # when it is finished by ourself
@@ -131,7 +157,7 @@ class RemoteSSHExecutor(TestExecutor):
 
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug('Waited vs. Actual runtime: {0} vs. {1} seconds'.format(
-                    int(waited_time.total_seconds()), self.get_runtime(phase)))
+                    int(waited_time.total_seconds()), self.get_runtime(phase, vm = vm)))
 
         exit_status = int(self.__get_cmd_output(vm, 'cat ' + self._get_filename(phase, 'cmd_retcode')))
 

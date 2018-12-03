@@ -63,7 +63,7 @@ class LibcloudComputeProvider(ServiceProvider):
         self.platform = None
         self.working_dir = None
         self.post_create_script = 'echo "Hello World!"'
-        self.vms_pool = []
+        self.vms_pool = {}
 
         # used to cache some values, but not persisted
         self._driver = None
@@ -105,15 +105,14 @@ class LibcloudComputeProvider(ServiceProvider):
 
 
     def get_execution_environment(self, request: ExecutionEnvironmentRequest) -> ExecutionEnvironment:
-        if len(self.vms_pool) < request.n_vms:
-            for i in range(request.n_vms - len(self.vms_pool)):
-                self.vms_pool.append(self.__create_vm())
-
-        return VMSetExecutionEnvironment(self.vms_pool[:request.n_vms])
+        for n in request.vm_list:
+            if n not in self.vms_pool:
+                self.vms_pool[n] = self.__create_vm(n)
+        return VMSetExecutionEnvironment({x:self.vms_pool[x] for x in request.vm_list})
 
     def destroy_service(self):
         driver = self.__get_libcloud_drv()
-        nodes_id = [v.id for v in self.vms_pool]
+        nodes_id = [v.id for v in self.vms_pool.values()]
         to_delete = [n for n in driver.list_nodes() if n.id in nodes_id]
         logger.info('{0} nodes to delete'.format(len(to_delete)))
         for n in to_delete:
@@ -123,7 +122,7 @@ class LibcloudComputeProvider(ServiceProvider):
         if self.keypair_generated:
             self.__get_helper().destroy_keypair(driver, self.key_name)
 
-    def __create_vm(self):
+    def __create_vm(self, benchsuite_name):
 
         #1. get the driver
         driver = self.__get_libcloud_drv()
@@ -208,7 +207,7 @@ class LibcloudComputeProvider(ServiceProvider):
                 username = guess_username(platform)
                 logger.warning('"username" not specified. Using "%s"', username)
 
-            vm = VM(node.id, vm_id, username, platform,
+            vm = VM(benchsuite_name, node.id, vm_id, username, platform,
                     working_dir=self.working_dir,
                     priv_key=self.ssh_private_key)
 

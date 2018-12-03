@@ -37,7 +37,7 @@ class BashCommandBenchmark(Benchmark):
         self._props = {}
 
     def get_env_request(self):
-        return VMSetExecutionEnvironmentRequest(1)
+        return VMSetExecutionEnvironmentRequest(self._props.get('vm_list') or ['__default'])
 
     def prepare(self, execution):
         executor = RemoteSSHExecutor(execution)
@@ -59,19 +59,19 @@ class BashCommandBenchmark(Benchmark):
         executor = RemoteSSHExecutor(execution)
         return executor.get_runtime(phase)
 
-    def get_install_script(self, platform, interpolation_dict = {}):
-        return self.__get_script('install', platform, interpolation_dict)
+    def get_install_script(self, vm_name, platform, interpolation_dict = {}):
+        return self.__get_script('install', vm_name, platform, interpolation_dict)
 
-    def get_postinstall_script(self, platform, interpolation_dict = {}):
-        return self.__get_script('postinstall', platform, interpolation_dict)
+    def get_postinstall_script(self, vm_name, platform, interpolation_dict = {}):
+        return self.__get_script('postinstall', vm_name, platform, interpolation_dict)
 
-    def get_execute_script(self, platform, interpolation_dict = {}):
-        return self.__get_script('execute', platform, interpolation_dict)
+    def get_execute_script(self, vm_name, platform, interpolation_dict = {}):
+        return self.__get_script('execute', vm_name, platform, interpolation_dict)
 
-    def get_cleanup_script(self, platform, interpolation_dict = {}):
-        return self.__get_script('cleanup', platform, interpolation_dict)
+    def get_cleanup_script(self, vm_name, platform, interpolation_dict = {}):
+        return self.__get_script('cleanup', vm_name, platform, interpolation_dict)
 
-    def __get_script(self, type, platform, interpolation_dict):
+    def __get_script(self, type, vm_name, platform, interpolation_dict):
 
         # First try to search keys that have a combination of <type>_<platform_tokens>
         # The platform is tokenized at "_" characters
@@ -85,12 +85,18 @@ class BashCommandBenchmark(Benchmark):
         t = platform.split('_')
 
         for i in range(len(t), 0, -1):
-            prop = self._props.get(type + '_' + '_'.join(t[0:i]))
+            prop = self._props.get(type + '_' + '_'.join(t[0:i]) + '_' + vm_name)
+            if not prop:
+                prop = self._props.get(type + '_' + '_'.join(t[0:i]))
             if prop:
                 return textwrap.dedent(
                     self.__replace_cp_properties(prop, interpolation_dict)).strip()
 
         # try without the platform (e.g. install)
+        if type + '_' + vm_name in self._props:
+            return textwrap.dedent(self.__replace_cp_properties(
+                self._props[type + '_' + vm_name], interpolation_dict)).strip()
+
         if type in self._props:
             return textwrap.dedent(self.__replace_cp_properties(
                 self._props[type], interpolation_dict)).strip()
@@ -142,6 +148,11 @@ class BashCommandBenchmark(Benchmark):
             instance._props[k] = v
 
         instance.parser = parser
+
+        if 'vm_list' in instance._props:
+            instance._props['vm_list'] = [i.strip() for i in instance._props['vm_list'].split(',')]
+        else:
+            instance._props['vm_list'] = ['default']
 
         return instance
 

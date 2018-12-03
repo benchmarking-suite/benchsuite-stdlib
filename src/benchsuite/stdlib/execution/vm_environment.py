@@ -24,7 +24,8 @@ from benchsuite.core.model.execution import ExecutionEnvironment, ExecutionEnvir
 
 class VM:
 
-    def __init__(self, id, ip, username, platform, working_dir=None, priv_key=None, password=None):
+    def __init__(self, benchsuite_name, id, ip, username, platform, working_dir=None, priv_key=None, password=None):
+        self.benchsuite_name = benchsuite_name
         self.ip = ip
         self.id = id
         self.username = username
@@ -47,7 +48,7 @@ class VM:
 
 class VMSetExecutionEnvironment(ExecutionEnvironment):
 
-    def __init__(self, vms: List[VM]):
+    def __init__(self, vms):
         super().__init__()
         self.vms = vms
 
@@ -55,8 +56,10 @@ class VMSetExecutionEnvironment(ExecutionEnvironment):
         res = {}
         res['type'] = 'VMSet'
         res['vms'] = []
-        for v in self.vms:
+        for v in self.vms.values():
             d = {}
+
+            d['name'] = v.benchsuite_name
 
             if v.cpu:
                 d['cpu'] = v.cpu
@@ -76,5 +79,5 @@ class VMSetExecutionEnvironment(ExecutionEnvironment):
 
 class VMSetExecutionEnvironmentRequest(ExecutionEnvironmentRequest):
 
-    def __init__(self, n_vms):
-        self.n_vms = n_vms
+    def __init__(self, vm_list):
+        self.vm_list = vm_list
