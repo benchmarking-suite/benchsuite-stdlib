@@ -222,6 +222,62 @@ class DaCapoResultParser(ExecutionResultParser):
             'warmup_iters': {'value': int(warmup_iters), 'unit': 'num'}
         }
 
+class SysbenchResultParser(ExecutionResultParser):
+
+    start_pattern = re.compile("^###([a-zA-Z]+)###([0-9]+)###$")
+
+    cpu_metrics_patterns = {
+        'events_rate': (re.compile("^.*events per second:(.*)$"), 'num/s'),
+        'total_time':  (re.compile("^.*total time:(.*)s$"), 's'),
+        'latency_min': (re.compile("^.*min:(.*)$"), 'ms'),
+        'latency_max': (re.compile("^.*max:(.*)$"), 'ms'),
+        'latency_avg': (re.compile("^.*avg:(.*)$"), 'ms'),
+        'latency_95':  (re.compile("^.*95th percentile:(.*)$"), 'ms')
+    }
+
+    def get_metrics(self, tool, workload, logs):
+        """
+        https://wiki.gentoo.org/wiki/Sysbench
+
+        """
+        stdout = [e for e in logs if e['vm'] == 'default'][0]['stdout']
+        lines = stdout.split('\n')
+
+        # detect the different tool executions
+        execs_out = []
+        istart = iend = 0
+        while istart < len(lines):
+            match = self.start_pattern.match(lines[istart])
+            if match:
+                iend = istart
+                while iend < len(lines):
+                    if lines[iend] == '###END###':
+                        execs_out.append((match.group(1), int(match.group(2)), istart, iend))
+                        istart = iend
+                        break
+                    iend+=1
+            istart+=1
+
+        res = {}
+        for exec in execs_out:
+            if exec[0] == 'cpu':
+                res.update(self.get_cpu_metrics(lines[exec[2]:exec[3]+1], exec[1]))
+
+        return res
+
+
+    def get_cpu_metrics(self, output, n_threads):
+        res = {}
+
+        for l in output:
+            for k,v in self.cpu_metrics_patterns.items():
+                pattern, unit = v
+                m = pattern.match(l)
+                if(m):
+                    res['{0}_{1}'.format(k, n_threads)] = {'value':float(m.group(1).strip()), 'unit': unit}
+
+        return res
+
 
 
 class IPerfResultParser(ExecutionResultParser):
