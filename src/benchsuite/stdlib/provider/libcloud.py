@@ -188,7 +188,8 @@ class LibcloudComputeProvider(ServiceProvider):
             # if the node has not public ips, try to assign one
             if not node.public_ips:
                 ip = self.__assign_floating_ip(driver, node)
-                node.public_ips = [ip]
+                if ip:
+                    node.public_ips = [ip]
 
 
             if node.public_ips:
