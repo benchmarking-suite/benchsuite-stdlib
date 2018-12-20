@@ -249,14 +249,18 @@ class LibcloudComputeProvider(ServiceProvider):
                          'benchsuite.openstack.no_floating_ip is set to true')
             return
 
-        p_ip = self.__get_available_public_ip(driver)
+        try:
+            p_ip = self.__get_available_public_ip(driver)
 
-        if p_ip:
-            logger.debug('Trying to assign the public ip %s to the new instance', p_ip)
-            driver.ex_attach_floating_ip_to_node(node, p_ip)
-            return p_ip.ip_address
-        else:
-            logger.error('No floating public IPs available! Cannot assign a public ip to the instance')
+            if p_ip:
+                logger.debug('Trying to assign the public ip %s to the new instance', p_ip)
+                driver.ex_attach_floating_ip_to_node(node, p_ip)
+                return p_ip.ip_address
+            else:
+                logger.error('No floating public IPs available! Cannot assign a public ip to the instance')
+        except:
+            logger.error('Got exception assigning floating ip')
+            return
 
     def __get_available_public_ip(self, driver):
         public_ips = driver.ex_list_floating_ips()
