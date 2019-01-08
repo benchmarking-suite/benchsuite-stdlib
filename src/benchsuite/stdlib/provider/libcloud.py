@@ -329,6 +329,9 @@ class LibcloudComputeProvider(ServiceProvider):
         extra_params = {}
         extra_params['tenant'] = config['provider']['access_id']
 
+        if config['provider']['driver'] == 'openstack':
+            extra_params['ex_disk_config'] = 'AUTO'
+
         for k, v in config['provider'].items():
             if k in known_extra_keys or k.startswith('ex_'):
                 if v:
