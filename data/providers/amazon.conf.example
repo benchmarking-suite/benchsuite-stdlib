@@ -19,16 +19,22 @@
 
 
 [provider]
-class = benchsuite.stdlib.provider.libcloud.LibcloudComputeProvider
 
-name = amazon-ec2
+class = benchsuite.stdlib.provider.libcloud.LibcloudComputeProvider
 driver = ec2
 
+# custom name to identify the Cloud
+name = MyEC2Cloud
+
+# AWS API credentials
 access_id = <your access_id>
 secret_key = <your secret_key>
 
+# the region where VMs will be created (default: eu-east-1)
 region = us-west-1
 
+# custom parameter to speficy networks and security groups. If not provided they
+# will be created automatically
 security_group = allow_ssh
 network = subnet-4b510413
 
@@ -36,7 +42,12 @@ network = subnet-4b510413
 [ubuntu_micro]
 image = ami-73f7da13
 size = t2.micro
+
+# custom key pair parameter. If not provided, a new key pair will be created for this session
+# and removed when it is destroyed
 key_name = <your keypair name>
 key_path = <path to your private key file>
+
+# custom parameters, if not provided, they will be guessed automatically
 vm_user = ubuntu
 platform = ubuntu_16
