@@ -185,7 +185,7 @@ class FileBenchResultParser(ExecutionResultParser):
             'ops_throughput': {'value': float(ops_s), 'unit': 'ops/s'},
             'throughput': {'value': float(throughput), 'unit': 'mb/s'},
             'cputime': {'value': float(speed), 'unit': 'us cpu/s'},
-            'latency_avg': {'value': float(latency), 'unit': 'us'}
+            'latency_avg': {'value': float(latency), 'unit': 'ms'}
         }
 
 
