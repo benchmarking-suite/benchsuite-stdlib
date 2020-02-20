@@ -288,7 +288,7 @@ class LibcloudComputeProvider(ServiceProvider):
                 logger.warning('Error connecting ({0}). Max number of retries achieved. Raising the exception'.format(str(ex)))
                 raise ex
 
-    def get_provder_properties_dict(self):
+    def get_provider_properties_dict(self):
         return {
             'id': self.name,
             'size': self.size,
