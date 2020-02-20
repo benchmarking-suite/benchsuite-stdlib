@@ -43,9 +43,9 @@ class BashCommandBenchmark(Benchmark):
         executor = RemoteSSHExecutor(execution)
         executor.install()
 
-    def execute(self, execution, async=False):
+    def execute(self, execution, _async=False):
         executor = RemoteSSHExecutor(execution)
-        executor.run(async=async)
+        executor.run(_async=_async)
 
     def cleanup(self, execution):
         executor = RemoteSSHExecutor(execution)

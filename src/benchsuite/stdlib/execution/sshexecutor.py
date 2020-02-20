@@ -81,12 +81,12 @@ class RemoteSSHExecutor(TestExecutor):
             else:
                 logger.warning('No Post-install commands to execute for vm ' + vm.benchsuite_name)
 
-    def run(self, async=False):
+    def run(self, _async=False):
         for n in self.test._props['vm_list']:
             vm = self.env.vms[n]
             cmd = self.test.get_execute_script(vm.benchsuite_name, vm.platform, interpolation_dict=self.__build_props_dict())
             if cmd:
-                self.__execute_cmd(vm, cmd, 'run', async=async)
+                self.__execute_cmd(vm, cmd, 'run', _async=_async)
             else:
                 logger.warning('No execute commands found for this platform ({0})'.format(vm.platform))
                 #raise NoExecuteCommandsFound(logger.error('No execute commands found for platform {0}'.format(vm.platform)))
@@ -126,7 +126,7 @@ class RemoteSSHExecutor(TestExecutor):
 
     # TODO: at the moment there is no way of controlling poll_for_termination
     # value from the command line or settings/env variables
-    def __execute_cmd(self, vm, cmd, phase, async=False, poll_for_termination=True):
+    def __execute_cmd(self, vm, cmd, phase, _async=False, poll_for_termination=True):
         '''
 
         :param vm:
@@ -146,9 +146,9 @@ class RemoteSSHExecutor(TestExecutor):
         # if poll_for_termination, we just launch the command and then check
         # when it is finished by ourself
         exit_status, stdout, stderr = \
-            run_ssh_cmd(vm, remote_script, async=poll_for_termination or async)
+            run_ssh_cmd(vm, remote_script, _async=poll_for_termination or _async)
 
-        if async:
+        if _async:
             logger.info('Execution launched. Since async=True return immediately')
             return 0
 
@@ -157,7 +157,7 @@ class RemoteSSHExecutor(TestExecutor):
 
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug('Waited vs. Actual runtime: {0} vs. {1} seconds'.format(
-                    int(waited_time.total_seconds()), self.get_runtime(phase, vm = vm)))
+                    int(waited_time.total_seconds()), self.get_runtime(phase, vm=vm)))
 
         exit_status = int(self.__get_cmd_output(vm, 'cat ' + self._get_filename(phase, 'cmd_retcode')))
 
