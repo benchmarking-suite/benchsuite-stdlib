@@ -116,10 +116,9 @@ class YCSBResultParser(ExecutionResultParser):
 
             parsed_metrics[op_type][op_met] = met_val
 
-
-        #keep only interesting metrics, do some sanitization of names
+        # keep only interesting metrics, do some sanitization of names
         out = {
-            'ops_throughput': {'value': parsed_metrics['overall']['Throughput(ops/sec)'], 'unit': 'ops/s'}
+            'ops_throughput': {'value': float(parsed_metrics['overall']['Throughput(ops/sec)']), 'unit': 'ops/s'}
         }
 
         out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'insert'))
@@ -127,9 +126,7 @@ class YCSBResultParser(ExecutionResultParser):
         out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'update'))
         out.update(self.__get_metrics_by_operation_type(parsed_metrics, 'scan'))
 
-
         return out
-
 
     def __get_metrics_by_operation_type(self, parsed_metrics, op_type):
 
